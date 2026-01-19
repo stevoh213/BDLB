@@ -157,6 +157,43 @@ final class SupabaseAuthManager {
         isLoading = false
     }
 
+    // MARK: - Handle Availability
+
+    /// Checks if a username is available for registration.
+    ///
+    /// This method queries the Supabase `profiles` table to determine if
+    /// a given username (handle) is already taken. It's used during sign-up
+    /// to provide real-time feedback to users as they type their username.
+    ///
+    /// ## Implementation Details
+    ///
+    /// The availability check is performed via a Supabase query that:
+    /// 1. Filters profiles by exact handle match (case-insensitive)
+    /// 2. Returns true if no matching profile exists
+    /// 3. Returns false if a profile with that handle already exists
+    ///
+    /// This check is safe to call before authentication because the profiles
+    /// table has a Row Level Security (RLS) policy that allows unauthenticated
+    /// reads for handle availability checking.
+    ///
+    /// ## Usage
+    ///
+    /// ```swift
+    /// let isAvailable = try await authManager.checkHandleAvailable(handle: "climber123")
+    /// if isAvailable {
+    ///     // Username is available
+    /// } else {
+    ///     // Username is taken
+    /// }
+    /// ```
+    ///
+    /// - Parameter handle: The username to check for availability
+    /// - Returns: `true` if the handle is available, `false` if taken
+    /// - Throws: `NetworkError` if the API request fails
+    func checkHandleAvailable(handle: String) async throws -> Bool {
+        try await profilesTable.checkHandleAvailable(handle: handle)
+    }
+
     // MARK: - Computed Properties
 
     var currentUserId: UUID? {

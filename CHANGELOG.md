@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Supabase Authentication** - Complete auth flow with sign up, sign in, sign out
 - **Token Management** - Automatic token refresh with Keychain storage
 - **AuthView** - Sign up/sign in UI with form validation
+- **Real-time Username Availability** - Debounced username checking during sign-up (500ms delay)
+  - Visual feedback with spinner (checking), checkmark (available), X (taken), warning (invalid format)
+  - Username validation: 3-20 characters, alphanumeric + underscore, must start with letter
+  - Sign-up button disabled until username confirmed available
+  - `checkHandleAvailable()` method in SupabaseAuthManager
 - **Dev Bypass** - Debug-only authentication bypass for local testing
 - **Row Level Security** - Proper RLS policies for all database tables
 

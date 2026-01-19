@@ -149,10 +149,10 @@ extension EnvironmentValues {
 }
 
 /// Placeholder protocol for profile operations (needs implementation)
+/// Note: Sign-out is handled by AuthManager, not ProfileUseCase
 protocol ProfileUseCaseProtocol: Sendable {
     func loadProfile() async throws -> SCProfile
     func updateProfile(displayName: String?, bio: String?) async throws
-    func signOut() async throws
 }
 
 // MARK: - Feed Use Case (TODO: Implement)

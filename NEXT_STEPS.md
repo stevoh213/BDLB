@@ -323,6 +323,8 @@ grep -r "fatalError" SwiftClimb
 ## Questions to Answer Before Full Implementation
 
 1. **Authentication Flow**
+   - ✅ Username availability checking implemented
+   - ✅ Username format validation (3-20 chars, alphanumeric + underscore, starts with letter)
    - Email verification required?
    - Password reset flow?
    - Social login (Apple ID, Google)?

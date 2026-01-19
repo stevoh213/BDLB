@@ -40,6 +40,8 @@ A modern iOS climbing logbook application built with SwiftUI, SwiftData, and Swi
 ✅ 68 Swift files with actor-based concurrency
 ✅ SwiftData models with 14 tables
 ✅ Supabase authentication (sign up, sign in, sign out, token refresh)
+✅ Real-time username availability checking with debouncing (500ms)
+✅ Username format validation (3-20 chars, alphanumeric + underscore, starts with letter)
 ✅ Design system with reusable components
 ✅ Tab-based navigation (Session, Logbook, Insights, Feed, Profile)
 ✅ Dev bypass for testing (DEBUG builds only)

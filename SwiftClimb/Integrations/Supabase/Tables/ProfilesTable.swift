@@ -44,8 +44,30 @@ actor ProfilesTable {
         )
     }
 
-    /// Check if a handle is available (not taken by another user)
-    /// Note: This is called before auth, so it uses unauthenticated access
+    /// Checks if a username (handle) is available for registration.
+    ///
+    /// This method queries the `profiles` table to determine if a given
+    /// handle is already in use by another user. It's designed to be called
+    /// during the sign-up flow before the user is authenticated.
+    ///
+    /// ## Row Level Security (RLS)
+    ///
+    /// This query requires a special RLS policy on the `profiles` table that
+    /// permits unauthenticated SELECT queries filtered by `handle`. This is
+    /// safe because:
+    /// - Only allows reading `handle` existence (not full profile data)
+    /// - Doesn't expose sensitive information
+    /// - Required for real-time username availability feedback
+    ///
+    /// ## Implementation
+    ///
+    /// The check performs a simple SELECT with a `handle` filter and returns:
+    /// - `true` if no profile with that handle exists (available)
+    /// - `false` if a profile with that handle exists (taken)
+    ///
+    /// - Parameter handle: The username to check for availability
+    /// - Returns: `true` if available, `false` if taken
+    /// - Throws: `NetworkError` if the query fails
     func checkHandleAvailable(handle: String) async throws -> Bool {
         let profiles: [ProfileDTO] = try await repository.select(
             from: "profiles",
