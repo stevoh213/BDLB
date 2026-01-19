@@ -2,34 +2,44 @@
 
 This document tracks known technical debt, temporary workarounds, and deferred work items for SwiftClimb. All items should be prioritized and addressed before public release.
 
-**Last Updated**: 2026-01-18
-**Status**: Initial Scaffolding Phase
+**Last Updated**: 2026-01-19
+**Status**: Xcode Project Configured, Services Partially Implemented
 
 ---
 
 ## Critical Items
 
-### 1. Missing Xcode Project Configuration ⚠️
+*No critical items currently.*
 
-**Impact**: HIGH - Blocks compilation
-**Effort**: Medium (2-4 hours)
+---
 
-**Issue**: The project has 59 Swift files but no `.xcodeproj` file.
+## Resolved Items
 
-**Required Actions**:
-1. Create Xcode project file via Xcode GUI or command-line tools
-2. Add all existing Swift files to project target
-3. Configure build settings:
-   - iOS Deployment Target: 18.0
-   - Swift Language Version: Swift 6
-   - Strict Concurrency Checking: Complete
-   - Treat Warnings as Errors: Yes
-4. Add package dependencies (supabase-swift)
-5. Create Info.plist with required keys
-6. Create Assets.xcassets with app icon and accent color
+### ~~1. Missing Xcode Project Configuration~~ ✅ RESOLVED
 
-**Assigned To**: Next available developer
-**Target Milestone**: 0.2.0 (Local MVP)
+**Resolution Date**: 2026-01-19
+
+**Completed**:
+- ✅ Created `SwiftClimb.xcodeproj` and `SwiftClimb.xcworkspace`
+- ✅ Added XCConfig files (Debug, Release, Shared, Tests)
+- ✅ Configured build settings (iOS 18.0, Swift 6, Strict Concurrency)
+- ✅ Created `Assets.xcassets` with AppIcon and AccentColor
+- ✅ Created entitlements file at `Config/SwiftClimb.entitlements`
+
+**Note**: Using custom Supabase implementation via `SupabaseClientActor` rather than supabase-swift SDK.
+
+---
+
+### ~~4. Supabase Configuration Missing~~ ✅ RESOLVED
+
+**Resolution Date**: 2026-01-19
+
+**Completed**:
+- ✅ Created `SupabaseConfig.swift` with URL and anon key
+- ✅ Implemented `SupabaseClientActor` for API communication
+- ✅ Added table definitions (ProfilesTable, SessionsTable, ClimbsTable, etc.)
+
+**Security Note**: Anon key is hardcoded. For production, consider environment-based configuration.
 
 ---
 
@@ -113,12 +123,12 @@ final class SessionService: SessionServiceProtocol, Sendable {
 
 ### 3. Unimplemented Service Methods
 
-**Impact**: HIGH - No functionality
-**Effort**: High (20-30 hours total)
+**Impact**: HIGH - Limited functionality
+**Effort**: Medium (15-20 hours remaining)
 
-**Issue**: All service protocol methods use `fatalError("Not implemented")`.
+**Issue**: Some service protocol methods still use `fatalError("Not implemented")`.
 
-**Total Methods**: ~50+ across 8 service files
+**Current Status**: 8 stub methods remaining across 6 service files (reduced from ~50+)
 
 **Implementation Order** (by dependency):
 1. **ProfileService** (no dependencies)
@@ -147,33 +157,6 @@ final class SessionService: SessionServiceProtocol, Sendable {
 
 **Assigned To**: TBD
 **Target Milestone**: 0.2.0 - 0.5.0 (phased)
-
----
-
-### 4. Supabase Configuration Missing
-
-**Impact**: HIGH - Blocks backend integration
-**Effort**: Low (1 hour)
-
-**Issue**: No configuration for Supabase connection.
-
-**Required**:
-1. Create `Config.swift` or environment file with:
-   ```swift
-   enum Config {
-       static let supabaseURL = "https://YOUR_PROJECT.supabase.co"
-       static let supabaseAnonKey = "YOUR_ANON_KEY"
-       static let openBetaEndpoint = "https://api.openbeta.io/graphql"
-   }
-   ```
-
-2. Ensure keys are not committed to git:
-   - Add to `.gitignore`
-   - Document setup in README
-   - Consider using Xcode build configurations for env-specific keys
-
-**Assigned To**: TBD
-**Target Milestone**: 0.3.0 (Supabase Integration)
 
 ---
 
@@ -425,15 +408,15 @@ These are not debt but intentionally deferred:
 
 ## Tracking Metrics
 
-### Total Debt Items: 11 active + 4 deferred
-### Critical: 1
-### High Priority: 3
+### Total Debt Items: 9 active + 4 deferred (2 resolved)
+### Critical: 0 ✅
+### High Priority: 2
 ### Medium Priority: 4
 ### Low Priority: 3
 
-### Estimated Total Effort: 45-60 hours
+### Estimated Total Effort: 35-45 hours (reduced from 45-60)
 
-**Note**: Architecture simplified to MV (removed ViewModel layer), reducing overall complexity and technical debt.
+**Note**: Architecture simplified to MV (removed ViewModel layer), reducing overall complexity and technical debt. Xcode project configuration and Supabase setup completed.
 
 ---
 
@@ -478,4 +461,4 @@ Example template:
 ---
 
 **Last Updated by**: Agent 4 (The Scribe)
-**Review Status**: Current as of initial scaffolding completion
+**Review Status**: Current as of Xcode project configuration completion (2026-01-19)

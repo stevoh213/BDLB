@@ -1,40 +1,57 @@
 # Project Overview
 
-This is a native **iOS application** built with **Swift 6.1+** and **SwiftUI**. The codebase targets **iOS 18.0 and later**, allowing full use of modern Swift and iOS APIs. All concurrency is handled with **Swift Concurrency** (async/await, actors, @MainActor isolation) ensuring thread-safe code.
+This is **SwiftClimb**, a native **iOS climbing logbook application** built with **Swift 6** and **SwiftUI**. The codebase targets **iOS 18.0 and later**, allowing full use of modern Swift and iOS APIs. All concurrency is handled with **Swift Concurrency** (async/await, actors, @MainActor isolation) ensuring thread-safe code.
 
-- **Frameworks & Tech:** SwiftUI for UI, Swift Concurrency with strict mode, Swift Package Manager for modular architecture
-- **Architecture:** Model-View (MV) pattern using pure SwiftUI state management. We avoid MVVM and instead leverage SwiftUI's built-in state mechanisms (@State, @Observable, @Environment, @Binding)
-- **Testing:** Swift Testing framework with modern @Test macros and #expect/#require assertions
-- **Platform:** iOS (Simulator and Device)
+- **Purpose:** Offline-first climbing logbook with session tracking, climb logging, and social features
+- **Backend:** Supabase for authentication and cloud sync, OpenBeta for outdoor climb data
+- **Architecture:** Model-View (MV) pattern with offline-first design using SwiftData as the source of truth
+- **State Management:** Pure SwiftUI state management (@State, @Query, @Bindable, @Environment)
+- **Concurrency:** Swift 6 strict concurrency checking enabled, actor-based isolation throughout
+- **Testing:** Swift Testing framework (not yet implemented)
+- **Platform:** iOS 18.0+ (Simulator and Device)
 - **Accessibility:** Full accessibility support using SwiftUI's accessibility modifiers
 
 ## Project Structure
 
-The project follows a **workspace + SPM package** architecture:
+SwiftClimb uses a **layered architecture** organized by feature:
 
 ```
-YourApp/
-├── Config/                         # XCConfig build settings
+SwiftClimb/
+├── Config/                         # XCConfig build settings + entitlements
 │   ├── Debug.xcconfig
 │   ├── Release.xcconfig
 │   ├── Shared.xcconfig
-│   └── Tests.xcconfig
-├── YourApp.xcworkspace/            # Workspace container
-├── YourApp.xcodeproj/              # App shell (minimal wrapper)
-├── YourApp/                        # App target - just the entry point
-│   ├── Assets.xcassets/
-│   ├── YourAppApp.swift           # @main entry point only
-│   └── YourApp.xctestplan
-├── YourAppPackage/                 # All features and business logic
-│   ├── Package.swift
-│   ├── Sources/
-│   │   └── YourAppFeature/        # Feature modules
-│   └── Tests/
-│       └── YourAppFeatureTests/   # Swift Testing tests
-└── YourAppUITests/                 # UI automation tests
+│   └── SwiftClimb.entitlements
+├── SwiftClimb.xcworkspace/         # Workspace (open this in Xcode)
+├── SwiftClimb.xcodeproj/           # Xcode project
+├── SwiftClimb/                     # All source code
+│   ├── App/                        # Entry point, navigation, DI
+│   │   ├── SwiftClimbApp.swift    # @main with dependency injection
+│   │   ├── ContentView.swift      # Root TabView
+│   │   └── AuthView.swift         # Authentication UI
+│   ├── Core/                       # Shared infrastructure
+│   │   ├── DesignSystem/          # Tokens + reusable components
+│   │   ├── Networking/            # HTTP + GraphQL clients (actors)
+│   │   ├── Persistence/           # SwiftData + Keychain
+│   │   └── Sync/                  # Background sync actors
+│   ├── Domain/                     # Business logic
+│   │   ├── Models/                # SwiftData @Model classes
+│   │   ├── Services/              # Service protocols + implementations
+│   │   └── UseCases/              # Single-purpose business operations
+│   ├── Features/                   # Feature UI
+│   │   ├── Session/               # Session tracking
+│   │   ├── Logbook/               # Session history
+│   │   ├── Insights/              # Analytics (premium)
+│   │   ├── Feed/                  # Social feed
+│   │   └── Profile/               # Profile settings
+│   └── Integrations/               # External services
+│       ├── Supabase/              # Auth + database sync
+│       └── OpenBeta/              # Outdoor climb search
+├── Documentation/                  # Architecture docs
+└── Database/                       # SQL migrations (for Supabase)
 ```
 
-**Important:** All development work should be done in the **YourAppPackage** Swift Package, not in the app project. The app project is merely a thin wrapper that imports and launches the package features.
+**Development Focus:** All code lives in `SwiftClimb/` directory. No separate package structure.
 
 # Code Quality & Style Guidelines
 
@@ -730,4 +747,239 @@ struct TaskListView: View {
 
 ---
 
-Remember: This project prioritizes clean, simple SwiftUI code using the platform's native state management. Keep the app shell minimal and implement all features in the Swift Package.
+# SwiftClimb-Specific Patterns
+
+## Offline-First Architecture
+
+SwiftClimb uses an **offline-first** approach where SwiftData is the source of truth for the UI:
+
+```swift
+// ✅ GOOD: Write to SwiftData first, sync in background
+func createSession(...) async throws -> SCSession {
+    // 1. Create locally (< 100ms)
+    let session = SCSession(...)
+    modelContext.insert(session)
+    try modelContext.save()
+
+    // 2. Enqueue for background sync (non-blocking)
+    await syncActor.enqueue(.insertSession(session))
+
+    return session
+}
+
+// ❌ BAD: Blocking on network before local save
+func createSession(...) async throws -> SCSession {
+    // Don't wait for Supabase before saving locally
+    let session = try await supabaseClient.createSession(...)
+    modelContext.insert(session)
+    try modelContext.save()
+    return session
+}
+```
+
+**Benefits:**
+- Instant UI feedback
+- Works offline
+- Network failures don't block users
+- Predictable UX
+
+## Model-View Pattern
+
+SwiftClimb uses **Model-View (MV)** - no ViewModels:
+
+```swift
+// ✅ GOOD: View observes SwiftData, calls UseCases
+struct SessionView: View {
+    // Observe data directly
+    @Query(filter: #Predicate<SCSession> { $0.endedAt == nil })
+    private var activeSessions: [SCSession]
+
+    // Inject use cases
+    @Environment(\.startSessionUseCase) private var startSessionUseCase
+
+    // View-local state
+    @State private var isLoading = false
+    @State private var errorMessage: String?
+
+    var body: some View {
+        if let session = activeSessions.first {
+            ActiveSessionView(session: session)
+        } else {
+            Button("Start Session") {
+                await handleStartSession()
+            }
+        }
+    }
+
+    private func handleStartSession() async {
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            _ = try await startSessionUseCase.execute(...)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+}
+
+// ❌ BAD: Don't create ViewModels
+@Observable
+class SessionViewModel {  // ❌ Not needed
+    var session: SCSession?
+
+    func startSession() { ... }
+}
+```
+
+## Actor-Based Services
+
+All services that manage state or do I/O should be actors:
+
+```swift
+// ✅ GOOD: Actor for state management
+actor SessionService: SessionServiceProtocol {
+    private let modelContext: ModelContext
+
+    func createSession(...) async throws -> SCSession {
+        // Thread-safe access to modelContext
+        let session = SCSession(...)
+        modelContext.insert(session)
+        try modelContext.save()
+        return session
+    }
+}
+
+// ✅ GOOD: UseCase with Sendable dependencies
+final class StartSessionUseCase: StartSessionUseCaseProtocol, Sendable {
+    private let sessionService: SessionServiceProtocol  // Protocol is Sendable
+
+    func execute(...) async throws -> SCSession {
+        try await sessionService.createSession(...)
+    }
+}
+```
+
+## Environment-Based Dependency Injection
+
+Use SwiftUI Environment for dependency injection:
+
+```swift
+// 1. Define environment key
+extension EnvironmentValues {
+    @Entry var startSessionUseCase: StartSessionUseCaseProtocol =
+        DefaultStartSessionUseCase()
+}
+
+// 2. Inject in app entry point
+@main
+struct SwiftClimbApp: App {
+    let startSessionUseCase: StartSessionUseCaseProtocol
+
+    init() {
+        // Create dependencies
+        let sessionService = SessionService(...)
+        startSessionUseCase = StartSessionUseCase(
+            sessionService: sessionService
+        )
+    }
+
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+                .environment(\.startSessionUseCase, startSessionUseCase)
+        }
+    }
+}
+
+// 3. Use in views
+struct SessionView: View {
+    @Environment(\.startSessionUseCase) private var startSessionUseCase
+
+    var body: some View {
+        // Use the injected use case
+    }
+}
+```
+
+## SwiftData Naming Convention
+
+All SwiftData models use `SC` prefix (SwiftClimb):
+
+```swift
+@Model
+final class SCSession {  // ✅ SC prefix
+    @Attribute(.unique) var id: UUID
+    var userId: UUID
+    var startedAt: Date
+    // ...
+}
+
+@Model
+final class Session {  // ❌ Missing prefix
+    // ...
+}
+```
+
+## Soft Deletes for Sync
+
+Use `deletedAt` for soft deletes to support sync:
+
+```swift
+@Model
+final class SCSession {
+    var deletedAt: Date?  // nil = active, non-nil = deleted
+
+    var isDeleted: Bool {
+        deletedAt != nil
+    }
+}
+
+// Queries filter out deleted records
+@Query(filter: #Predicate<SCSession> { $0.deletedAt == nil })
+var activeSessions: [SCSession]
+```
+
+## Debug Bypass Pattern
+
+Use conditional compilation for dev features:
+
+```swift
+#if DEBUG
+enum DevSettings {
+    static let mockUserId = UUID(...)
+}
+#endif
+
+@main
+struct SwiftClimbApp: App {
+    #if DEBUG
+    @State private var devBypassEnabled = false
+    #endif
+
+    private var isAuthenticated: Bool {
+        #if DEBUG
+        if devBypassEnabled { return true }
+        #endif
+        return authManager.isAuthenticated
+    }
+}
+```
+
+**Important:** Dev-only features are automatically removed in Release builds.
+
+---
+
+# SwiftClimb Development Workflow
+
+1. **Make changes** in `SwiftClimb/` directory (organized by layer)
+2. **Follow MV pattern** - no ViewModels, Views call UseCases
+3. **Write offline-first** - SwiftData first, sync in background
+4. **Use actors** for all network and sync operations
+5. **Inject dependencies** via Environment
+6. **Test locally** with dev bypass (skip auth, use mock data)
+7. **Build and run** - `Cmd+R` in Xcode
+
+---
+
+Remember: SwiftClimb prioritizes offline-first UX, strict concurrency safety, and simple MV architecture without ViewModels.

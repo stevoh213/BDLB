@@ -989,5 +989,27 @@ For more specific topics, see:
 
 ---
 
-**Last Updated**: 2026-01-18
+## Recent Updates
+
+### 2026-01-19: Supabase Auth Integration
+- Implemented complete authentication flow (sign up, sign in, sign out, token refresh)
+- Added Keychain storage for auth tokens via `KeychainService` actor
+- Fixed `grant_type` parameter (must be URL query param, not body)
+- Fixed date decoding for Supabase timestamps with fractional seconds
+- Added `Prefer: return=representation` header for POST/PATCH
+- Fixed RLS policy to allow handle availability checks before auth
+- Created AuthView with form validation and error handling
+- Added dev bypass for DEBUG builds only
+
+### 2026-01-18: Initial Scaffolding
+- Created 68 Swift files with complete project structure
+- Implemented MV (Model-View) architecture (no ViewModels)
+- Set up SwiftData with 14 models and proper relationships
+- Configured Xcode project with workspace and XCConfig files
+- Created design system with reusable components
+- Established actor-based concurrency patterns
+
+---
+
+**Last Updated**: 2026-01-19
 **Author**: Agent 4 (The Scribe)

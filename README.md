@@ -1,125 +1,244 @@
-# SwiftClimb - iOS App
+# SwiftClimb - iOS Climbing Logbook
 
-A modern iOS application using a **workspace + SPM package** architecture for clean separation between app shell and feature code.
+A modern iOS climbing logbook application built with SwiftUI, SwiftData, and Swift 6 strict concurrency. SwiftClimb helps climbers track sessions, log attempts, analyze progress, and connect with the climbing community.
 
-## AI Assistant Rules Files
+## Features
 
-This template includes **opinionated rules files** for popular AI coding assistants. These files establish coding standards, architectural patterns, and best practices for modern iOS development using the latest APIs and Swift features.
+### Core Features
+- **Session Tracking**: Start/end climbing sessions with mental and physical readiness metrics
+- **Climb Logging**: Record climbs with grade, discipline, location, and notes
+- **Attempt Tracking**: Log individual attempts with outcomes, send types, and timestamps
+- **Offline-First**: All data persists locally with SwiftData, syncs in background when online
+- **Tag System**: Categorize climbs by technique, skill, and wall style with impact indicators
 
-### Included Rules Files
-- **Claude Code**: `CLAUDE.md` - Claude Code rules
-- **Cursor**: `.cursor/*.mdc` - Cursor-specific rules
-- **GitHub Copilot**: `.github/copilot-instructions.md` - GitHub Copilot rules
+### Integrations
+- **Supabase Backend**: Authentication, Row Level Security, 14 database tables
+- **OpenBeta API**: Search outdoor climbs with comprehensive route information
+- **Keychain Storage**: Secure token storage with automatic refresh
 
-### Customization Options
-These rules files are **starting points** - feel free to:
-- ✅ **Edit them** to match your team's coding standards
-- ✅ **Delete them** if you prefer different approaches
-- ✅ **Add your own** rules for other AI tools
-- ✅ **Update them** as new iOS APIs become available
+### Social Features (Planned)
+- Follow climbers
+- Share sessions and climbs
+- Kudos and comments
+- Activity feed
 
-### What Makes These Rules Opinionated
-- **No ViewModels**: Embraces pure SwiftUI state management patterns
-- **Swift 6+ Concurrency**: Enforces modern async/await over legacy patterns
-- **Latest APIs**: Recommends iOS 18+ features with optional iOS 26 guidelines
-- **Testing First**: Promotes Swift Testing framework over XCTest
-- **Performance Focus**: Emphasizes @Observable over @Published for better performance
+### Premium Features (Planned)
+- Advanced analytics and insights
+- Volume trends and pyramids
+- Grade progression tracking
+- Export functionality
 
-**Note for AI assistants**: You MUST read the relevant rules files before making changes to ensure consistency with project standards.
+## Project Status
+
+**Current Version**: 0.1.0 (Alpha)
+**Platform**: iOS 18.0+
+**Language**: Swift 6
+**Architecture**: Model-View (MV) with offline-first design
+
+### What's Implemented
+✅ Complete project structure with Xcode workspace
+✅ 68 Swift files with actor-based concurrency
+✅ SwiftData models with 14 tables
+✅ Supabase authentication (sign up, sign in, sign out, token refresh)
+✅ Design system with reusable components
+✅ Tab-based navigation (Session, Logbook, Insights, Feed, Profile)
+✅ Dev bypass for testing (DEBUG builds only)
+✅ Keychain token storage
+
+### In Progress
+🚧 Service implementations (Session, Climb, Attempt services)
+🚧 Background sync with conflict resolution
+🚧 OpenBeta GraphQL integration
+🚧 Social features (Follow, Posts, Kudos, Comments)
+
+See [NEXT_STEPS.md](NEXT_STEPS.md) for detailed roadmap.
+
+## Quick Start
+
+### Prerequisites
+- macOS 15.0+ (Sequoia)
+- Xcode 16.0+
+- iOS 18.0+ device or simulator
+- Supabase account (for backend features)
+
+### Setup Instructions
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/SwiftClimb.git
+   cd SwiftClimb
+   ```
+
+2. **Open the workspace**
+   ```bash
+   open SwiftClimb.xcworkspace
+   ```
+
+3. **Configure Supabase** (Optional - app works offline without this)
+   - Create a Supabase project at [supabase.com](https://supabase.com)
+   - Run the SQL migrations from `/Database/migrations/`
+   - Update `SwiftClimb/Integrations/Supabase/SupabaseConfig.swift`:
+     ```swift
+     static let url = "https://YOUR_PROJECT.supabase.co"
+     static let anonKey = "YOUR_ANON_KEY"
+     ```
+
+4. **Build and run**
+   - Select a simulator or device
+   - Press `Cmd+R` to build and run
+   - Use dev bypass in DEBUG builds to skip authentication
+
+### Dev Bypass (DEBUG Only)
+In DEBUG builds, tap "Dev Bypass" on the auth screen to skip authentication and use mock data. This is automatically removed in Release builds.
+
+**Note for AI assistants**: Read [CLAUDE.md](CLAUDE.md) for project conventions before making changes.
 
 ## Project Architecture
 
+SwiftClimb follows a **layered architecture** with clear separation of concerns:
+
 ```
 SwiftClimb/
-├── SwiftClimb.xcworkspace/              # Open this file in Xcode
-├── SwiftClimb.xcodeproj/                # App shell project
-├── SwiftClimb/                          # App target (minimal)
-│   ├── Assets.xcassets/                # App-level assets (icons, colors)
-│   ├── SwiftClimbApp.swift              # App entry point
-│   └── SwiftClimb.xctestplan            # Test configuration
-├── SwiftClimbPackage/                   # 🚀 Primary development area
-│   ├── Package.swift                   # Package configuration
-│   ├── Sources/SwiftClimbFeature/       # Your feature code
-│   └── Tests/SwiftClimbFeatureTests/    # Unit tests
-└── SwiftClimbUITests/                   # UI automation tests
+├── SwiftClimb.xcworkspace/              # Open this in Xcode
+├── SwiftClimb.xcodeproj/                # Xcode project
+├── Config/                              # Build configuration
+│   ├── Debug.xcconfig
+│   ├── Release.xcconfig
+│   ├── Shared.xcconfig
+│   └── SwiftClimb.entitlements
+├── SwiftClimb/                          # Source code
+│   ├── App/
+│   │   ├── SwiftClimbApp.swift         # @main entry point
+│   │   ├── ContentView.swift           # Root TabView
+│   │   └── AuthView.swift              # Authentication UI
+│   ├── Core/
+│   │   ├── DesignSystem/               # Tokens + Components
+│   │   ├── Networking/                 # HTTP + GraphQL clients
+│   │   ├── Persistence/                # SwiftData + Keychain
+│   │   └── Sync/                       # Background sync actors
+│   ├── Domain/
+│   │   ├── Models/                     # SwiftData @Model classes
+│   │   ├── Services/                   # Service protocols
+│   │   └── UseCases/                   # Business logic
+│   ├── Features/
+│   │   ├── Session/                    # Session tracking UI
+│   │   ├── Logbook/                    # Session history UI
+│   │   ├── Insights/                   # Analytics UI (premium)
+│   │   ├── Feed/                       # Social feed UI
+│   │   └── Profile/                    # Profile settings UI
+│   └── Integrations/
+│       ├── Supabase/                   # Auth + database sync
+│       └── OpenBeta/                   # Outdoor climb search
+└── Documentation/                       # Architecture docs
 ```
 
-## Key Architecture Points
+### Key Architectural Principles
 
-### Workspace + SPM Structure
-- **App Shell**: `SwiftClimb/` contains minimal app lifecycle code
-- **Feature Code**: `SwiftClimbPackage/Sources/SwiftClimbFeature/` is where most development happens
-- **Separation**: Business logic lives in the SPM package, app target just imports and displays it
+1. **Offline-First**: SwiftData is the source of truth for UI, Supabase syncs in background
+2. **Actor Isolation**: All network and sync operations use Swift actors for thread safety
+3. **Model-View (MV)**: Views observe SwiftData via `@Query`, call UseCases for business logic
+4. **Dependency Injection**: UseCases injected via `@Environment` for testability
+5. **Strict Concurrency**: Swift 6 concurrency checking enabled throughout
 
-### Buildable Folders (Xcode 16)
-- Files added to the filesystem automatically appear in Xcode
-- No need to manually add files to project targets
-- Reduces project file conflicts in teams
-
-## Development Notes
-
-### Code Organization
-Most development happens in `SwiftClimbPackage/Sources/SwiftClimbFeature/` - organize your code as you prefer.
-
-### Public API Requirements
-Types exposed to the app target need `public` access:
-```swift
-public struct NewView: View {
-    public init() {}
-    
-    public var body: some View {
-        // Your view code
-    }
-}
-```
-
-### Adding Dependencies
-Edit `SwiftClimbPackage/Package.swift` to add SPM dependencies:
-```swift
-dependencies: [
-    .package(url: "https://github.com/example/SomePackage", from: "1.0.0")
-],
-targets: [
-    .target(
-        name: "SwiftClimbFeature",
-        dependencies: ["SomePackage"]
-    ),
-]
-```
-
-### Test Structure
-- **Unit Tests**: `SwiftClimbPackage/Tests/SwiftClimbFeatureTests/` (Swift Testing framework)
-- **UI Tests**: `SwiftClimbUITests/` (XCUITest framework)
-- **Test Plan**: `SwiftClimb.xctestplan` coordinates all tests
+See [Documentation/ARCHITECTURE.md](Documentation/ARCHITECTURE.md) for detailed architecture documentation.
 
 ## Configuration
 
-### XCConfig Build Settings
+### Build Settings
 Build settings are managed through **XCConfig files** in `Config/`:
-- `Config/Shared.xcconfig` - Common settings (bundle ID, versions, deployment target)
-- `Config/Debug.xcconfig` - Debug-specific settings  
-- `Config/Release.xcconfig` - Release-specific settings
-- `Config/Tests.xcconfig` - Test-specific settings
+- `Shared.xcconfig` - Bundle ID, version, deployment target (iOS 18.0)
+- `Debug.xcconfig` - Debug-specific settings
+- `Release.xcconfig` - Release-specific settings
 
-### Entitlements Management
-App capabilities are managed through a **declarative entitlements file**:
-- `Config/SwiftClimb.entitlements` - All app entitlements and capabilities
-- AI agents can safely edit this XML file to add HealthKit, CloudKit, Push Notifications, etc.
-- No need to modify complex Xcode project files
+### Entitlements
+App capabilities in `Config/SwiftClimb.entitlements`:
+- Keychain access groups (for token storage)
+- Network client entitlement (for Supabase/OpenBeta)
 
-### Asset Management
-- **App-Level Assets**: `SwiftClimb/Assets.xcassets/` (app icon, accent color)
-- **Feature Assets**: Add `Resources/` folder to SPM package if needed
+## Development Guide
 
-### SPM Package Resources
-To include assets in your feature package:
-```swift
-.target(
-    name: "SwiftClimbFeature",
-    dependencies: [],
-    resources: [.process("Resources")]
-)
-```
+### Code Organization
+- **App Layer**: Entry point, navigation, dependency injection
+- **Core Layer**: Shared infrastructure (design system, networking, sync)
+- **Domain Layer**: Models, services, use cases (business logic)
+- **Features Layer**: Feature-specific SwiftUI views
+- **Integrations Layer**: External service integrations
 
-### Generated with XcodeBuildMCP
-This project was scaffolded using [XcodeBuildMCP](https://github.com/cameroncooke/XcodeBuildMCP), which provides tools for AI-assisted iOS development workflows.
+### Adding a New Feature
+1. Create models in `Domain/Models/`
+2. Define service protocol in `Domain/Services/`
+3. Implement use case in `Domain/UseCases/`
+4. Create UI in `Features/YourFeature/`
+5. Inject use case via `@Environment` in `SwiftClimbApp.swift`
+
+### Design System
+Reusable components in `Core/DesignSystem/`:
+- **Tokens**: Spacing, Typography, Colors, CornerRadius
+- **Components**: SCGlassCard, SCPrimaryButton, SCMetricPill, etc.
+
+All components support:
+- Dynamic Type
+- Reduce Transparency
+- VoiceOver
+- Minimum 44x44pt tap targets
+
+### Testing Strategy
+- **Unit Tests**: Test services and use cases in isolation
+- **Integration Tests**: Test SwiftData persistence and sync
+- **UI Tests**: Test user flows end-to-end
+
+*Note: Test suite is not yet implemented - tracked in NEXT_STEPS.md*
+## Resources
+
+### Documentation
+- [Architecture Guide](Documentation/ARCHITECTURE.md) - Detailed architecture documentation
+- [Design System](Documentation/DESIGN_SYSTEM.md) - Component library and design tokens
+- [Sync Strategy](Documentation/SYNC_STRATEGY.md) - Offline-first sync implementation
+- [CLAUDE.md](CLAUDE.md) - AI assistant project context and conventions
+
+### External Links
+- [SwiftData Documentation](https://developer.apple.com/documentation/swiftdata)
+- [Swift 6 Concurrency](https://docs.swift.org/swift-book/LanguageGuide/Concurrency.html)
+- [Supabase Documentation](https://supabase.com/docs)
+- [OpenBeta API](https://openbeta.io/developers)
+
+## Contributing
+
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+
+### Development Workflow
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes following the coding standards in CLAUDE.md
+4. Add tests for new functionality
+5. Run the test suite
+6. Commit your changes (`git commit -m 'Add amazing feature'`)
+7. Push to the branch (`git push origin feature/amazing-feature`)
+8. Open a Pull Request
+
+### Coding Standards
+- Follow Swift API Design Guidelines
+- Use Swift 6 strict concurrency (async/await, actors)
+- Write descriptive commit messages
+- Add inline documentation for public APIs
+- Ensure all views support accessibility features
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgments
+
+- **OpenBeta** - Comprehensive climbing route database
+- **Supabase** - Backend infrastructure and authentication
+- **XcodeBuildMCP** - AI-assisted development tooling
+
+## Contact
+
+For questions, feedback, or support:
+- Open an issue on GitHub
+- Email: support@swiftclimb.app (if applicable)
+
+---
+
+**Built with SwiftUI, SwiftData, and Swift 6**

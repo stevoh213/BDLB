@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Supabase Auth Integration (2026-01-19)
+
+#### Authentication Features
+- **Supabase Authentication** - Complete auth flow with sign up, sign in, sign out
+- **Token Management** - Automatic token refresh with Keychain storage
+- **AuthView** - Sign up/sign in UI with form validation
+- **Dev Bypass** - Debug-only authentication bypass for local testing
+- **Row Level Security** - Proper RLS policies for all database tables
+
+#### Recent Bug Fixes
+- Fixed `grant_type` parameter (must be query param, not body) for Supabase Auth
+- Fixed date decoding for timestamps with fractional seconds
+- Added `Prefer: return=representation` header for POST/PATCH requests
+- Fixed RLS policy to allow handle availability checks before authentication
+- Fixed sign out button to properly use `authManager`
+
+#### Technical Improvements
+- Created `KeychainService` actor for secure token storage
+- Implemented `SupabaseAuthManager` with proper error handling
+- Added environment value keys for auth state and user ID
+- Created 14 database tables with proper relationships and RLS policies
+
 ### Changed - Architecture Simplification (2026-01-18)
 
 #### Architecture Change: MVVM → MV

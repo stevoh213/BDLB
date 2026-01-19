@@ -1,58 +1,53 @@
 # SwiftClimb - Next Steps
 
-## Immediate Actions Required
+## Completed Items ✅
 
-### 1. Create Xcode Project
-To convert this scaffold into a buildable Xcode project:
+### ~~1. Create Xcode Project~~ ✅ DONE
+- Created `SwiftClimb.xcodeproj` and `SwiftClimb.xcworkspace`
+- All 68 Swift files added to project
+- Proper target configuration
 
-```bash
-cd /Users/skelley/Projects/SwiftClimb
-# Option A: Create new Xcode project via Xcode GUI
-# File > New > Project > iOS > App
-# - Product Name: SwiftClimb
-# - Interface: SwiftUI
-# - Storage: SwiftData
-# - Language: Swift
+### ~~2. Configure Build Settings~~ ✅ DONE
+- iOS Deployment Target: 18.0
+- Swift Language Version: Swift 6
+- Strict Concurrency Checking: Complete
+- Bundle Identifier: `com.swiftclimb.app`
+- XCConfig files for Debug/Release/Shared
 
-# Option B: Use command line (if xcodeproj is available)
-# Then add all existing Swift files to the project
-```
+### ~~3. Supabase Configuration~~ ✅ DONE
+- Created `SupabaseConfig.swift` with URL and anon key
+- Implemented authentication flow (sign up, sign in, sign out, token refresh)
+- Keychain storage for auth tokens
+- Row Level Security policies for all tables
 
-### 2. Configure Build Settings
-In Xcode project settings:
-- **iOS Deployment Target**: 18.0 (Note: Spec mentions iOS 26+, likely a typo)
-- **Swift Language Version**: Swift 6
-- **Strict Concurrency Checking**: Complete (treat warnings as errors)
-- **Bundle Identifier**: `com.yourteam.swiftclimb` (update)
+### ~~4. Assets and Entitlements~~ ✅ DONE
+- App Icon placeholder in Assets.xcassets
+- Accent Color configured
+- Entitlements file created
+- Keychain access configured
 
-### 3. Add Package Dependencies
-Add via File > Add Package Dependencies:
-- **supabase-swift**: https://github.com/supabase/supabase-swift
-  - Version: Latest stable release
+## Current Status
 
-Optional (recommended):
-- **swift-dependencies**: https://github.com/pointfreeco/swift-dependencies
+**Version**: 0.1.0 (Alpha)
+**Build Status**: Compiles successfully
+**Auth**: Fully functional (with dev bypass for testing)
+**Database**: 14 tables with RLS policies
+**UI**: Tab navigation with 5 features (Session, Logbook, Insights, Feed, Profile)
 
-### 4. Create Configuration Files
+### What Works Now
+- Build and run in Xcode simulator or device
+- Sign up / Sign in with Supabase
+- Dev bypass for local testing (DEBUG only)
+- Tab navigation between features
+- Design system components render correctly
 
-#### Config.swift (for environment variables)
-```swift
-enum Config {
-    static let supabaseURL = "https://YOUR_PROJECT.supabase.co"
-    static let supabaseAnonKey = "YOUR_ANON_KEY"
-    static let openBetaEndpoint = "https://api.openbeta.io/graphql"
-}
-```
-
-#### Info.plist additions
-- Bundle Display Name
-- Required Device Capabilities
-- Privacy - Location When In Use Usage Description (for outdoor climbs)
-
-### 5. Create Assets
-- App Icon (1024x1024px)
-- Accent Color in Assets.xcassets
-- Preview Content folder
+### What Needs Implementation
+- Service layer implementations (Session, Climb, Attempt)
+- SwiftData CRUD operations
+- Background sync with Supabase
+- OpenBeta GraphQL integration
+- Social features (Follow, Posts, Kudos, Comments)
+- Insights/analytics features
 
 ---
 
