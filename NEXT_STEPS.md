@@ -31,8 +31,9 @@
 **Version**: 0.1.0 (Alpha)
 **Build Status**: Compiles successfully
 **Auth**: Fully functional (with dev bypass for testing)
-**Database**: 14 tables with RLS policies
+**Database**: 15 tables with RLS policies (added SCPremiumStatus)
 **UI**: Tab navigation with 5 features (Session, Logbook, Insights, Feed, Profile)
+**Premium**: StoreKit 2 integration with feature gates
 
 ### What Works Now
 - Build and run in Xcode simulator or device
@@ -40,14 +41,16 @@
 - Dev bypass for local testing (DEBUG only)
 - Tab navigation between features
 - Design system components render correctly
+- Premium subscription purchase flow (StoreKit 2)
+- Premium feature gates (Insights, Logbook history limit, OpenBeta)
+- 7-day offline grace period for premium users
 
 ### What Needs Implementation
 - Service layer implementations (Session, Climb, Attempt)
 - SwiftData CRUD operations
 - Background sync with Supabase
-- OpenBeta GraphQL integration
 - Social features (Follow, Posts, Kudos, Comments)
-- Insights/analytics features
+- Insights analytics calculations (UI built, calculations pending)
 
 ---
 
@@ -105,21 +108,22 @@
    - Verify sync on connection
    - Test conflict scenarios
 
-### Phase 3: OpenBeta Integration
+### ~~Phase 3: OpenBeta Integration~~ ✅ PARTIALLY COMPLETE
 **Goal**: Outdoor climb lookup
 
-1. **Implement OpenBetaClientActor**
-   - Real GraphQL execution
-   - Rate limiting
-   - Error handling
+1. ~~**Implement OpenBetaClientActor**~~ ✅ DONE
+   - ✅ Real GraphQL execution
+   - ✅ Rate limiting
+   - ✅ Error handling
 
-2. **Implement SearchOpenBetaUseCase**
-   - Area search
-   - Climb search
-   - Result mapping to domain models
+2. ~~**Implement SearchOpenBetaUseCase**~~ ✅ DONE
+   - ✅ Area search
+   - ✅ Climb search
+   - ✅ Result mapping to domain models
+   - ✅ Premium-only feature gate
 
-3. **Update AddClimbSheet**
-   - Add outdoor climb search
+3. **Update AddClimbSheet** (Pending)
+   - Add outdoor climb search UI
    - Link to OpenBeta climbs
    - Display climb details
 
@@ -141,24 +145,27 @@
    - View followers/following
    - Edit profile
 
-### Phase 5: Insights (Premium)
+### ~~Phase 5: Insights (Premium)~~ ✅ PARTIALLY COMPLETE
 **Goal**: Analytics and visualizations
 
-1. **Implement Insights Calculations**
+1. **Implement Insights Calculations** (Pending)
    - Volume by week/month
    - Attempt pyramid
    - Send pyramid
    - Grade progression
 
-2. **Implement Insights UI**
+2. **Implement Insights UI** (Pending)
    - Charts using Swift Charts
    - Date range selection
    - Export functionality
 
-3. **Add Subscription Paywall**
-   - StoreKit 2 integration
-   - Premium feature gating
-   - Restore purchases
+3. ~~**Add Subscription Paywall**~~ ✅ DONE
+   - ✅ StoreKit 2 integration
+   - ✅ Premium feature gating (Insights, Logbook, OpenBeta)
+   - ✅ Restore purchases
+   - ✅ PaywallView with monthly/annual pricing
+   - ✅ 7-day offline grace period
+   - ✅ Supabase premium status sync
 
 ---
 
@@ -334,13 +341,13 @@ grep -r "fatalError" SwiftClimb
    - Data export functionality needed?
    - GDPR compliance requirements?
 
-3. **Subscription Model**
-   - Pricing tiers?
-   - Free tier limitations (30 day history)?
-   - Trial period?
+3. **Subscription Model** ✅ ANSWERED
+   - ✅ Pricing tiers: Monthly ($4.99), Annual ($49.99)
+   - ✅ Free tier limitations: 30-day history, no Insights, no OpenBeta
+   - Trial period? (Not yet implemented)
 
 4. **Offline Behavior**
-   - Maximum offline duration?
+   - ✅ Maximum offline duration: 7 days for premium users
    - Storage limits for unsync'd data?
    - Conflict resolution UX when sync fails?
 

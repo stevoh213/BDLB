@@ -13,6 +13,10 @@ final class SCProfile {
     var createdAt: Date
     var updatedAt: Date
 
+    // Premium status relationship
+    @Relationship(deleteRule: .cascade)
+    var premiumStatus: SCPremiumStatus?
+
     // Sync metadata
     var needsSync: Bool
     var remoteId: UUID?
@@ -41,5 +45,12 @@ final class SCProfile {
         self.updatedAt = updatedAt
         self.needsSync = needsSync
         self.remoteId = remoteId
+    }
+}
+
+extension SCProfile {
+    /// Computed property for easy premium access
+    var isPremium: Bool {
+        premiumStatus?.isValidPremium ?? false
     }
 }

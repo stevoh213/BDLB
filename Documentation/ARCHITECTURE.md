@@ -10,6 +10,7 @@ This document provides a comprehensive overview of SwiftClimb's architecture, de
 5. [Offline-First Pattern](#offline-first-pattern)
 6. [Dependency Injection](#dependency-injection)
 7. [Error Handling](#error-handling)
+8. [Premium Subscription System](#premium-subscription-system)
 
 ---
 
@@ -973,6 +974,253 @@ struct SessionView: View {
 
 ---
 
+## Premium Subscription System
+
+### Overview
+
+SwiftClimb uses **StoreKit 2** for subscription management with an offline-first approach. Premium status is cached locally in SwiftData and synced to Supabase for cross-device consistency.
+
+### Architecture
+
+```
+User Purchase Attempt
+    │
+    ▼
+┌─────────────────┐ @MainActor
+│  PaywallView    │
+└────────┬────────┘
+         │ await premiumService.purchase()
+         ▼
+┌─────────────────┐ Actor
+│ PremiumService  │ ◄───── StoreKit 2 Transaction Updates
+└────────┬────────┘
+         │
+         ├──► Check StoreKit 2 for active subscription
+         │
+         ├──► Cache in SwiftData (SCPremiumStatus)
+         │
+         └──► Sync to Supabase (profiles table)
+```
+
+### Components
+
+#### PremiumService
+Actor-based service managing all premium operations:
+
+```swift
+actor PremiumService {
+    /// Check premium status with 7-day offline grace period
+    func isPremium() async -> Bool
+
+    /// Fetch available subscription products
+    func fetchProducts() async throws -> [Product]
+
+    /// Purchase a subscription
+    func purchase(productId: String) async throws
+
+    /// Restore previous purchases
+    func restorePurchases() async throws
+}
+```
+
+**Key Features**:
+- Listens to StoreKit 2 transaction updates automatically
+- Caches premium status in SwiftData for offline access
+- 7-day grace period for verified premium users when offline
+- Syncs premium status to Supabase profiles table
+
+#### SCPremiumStatus Model
+SwiftData model caching premium state:
+
+```swift
+@Model
+final class SCPremiumStatus {
+    var userId: UUID
+    var premiumExpiresAt: Date?
+    var productId: String?
+    var originalTransactionId: String?
+    var lastVerifiedAt: Date
+
+    /// Check if premium is valid with 7-day grace period
+    func isValid() -> Bool {
+        guard let expiresAt = premiumExpiresAt else { return false }
+
+        // Check if expired
+        if Date.now < expiresAt {
+            return true
+        }
+
+        // 7-day grace period for offline users
+        let gracePeriod: TimeInterval = 7 * 24 * 60 * 60
+        let allowedUntil = lastVerifiedAt.addingTimeInterval(gracePeriod)
+        return Date.now < allowedUntil
+    }
+}
+```
+
+**Fields**:
+- `premiumExpiresAt`: Subscription expiry date from StoreKit
+- `productId`: Product identifier (monthly or annual)
+- `originalTransactionId`: StoreKit transaction ID for verification
+- `lastVerifiedAt`: Last time subscription was verified with StoreKit
+
+#### PaywallView
+Complete subscription purchase UI:
+
+```swift
+struct PaywallView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedProductId: String?
+    @State private var isLoading = false
+    @State private var errorMessage: String?
+
+    // Features, pricing cards, purchase flow
+}
+```
+
+**Features**:
+- Monthly ($4.99/month) and Annual ($49.99/year) options
+- Feature highlights with SF Symbols
+- Purchase with loading states
+- Restore purchases link
+- Error handling with user-friendly messages
+- Terms of service and privacy policy links
+
+### Premium Feature Gates
+
+#### 1. Insights Tab - Full Block
+Free users see PaywallView instead of analytics:
+
+```swift
+struct InsightsView: View {
+    @Query private var premiumStatus: [SCPremiumStatus]
+
+    var body: some View {
+        if premiumStatus.first?.isValid() == true {
+            // Show analytics
+            InsightsContentView()
+        } else {
+            // Show paywall
+            PaywallView()
+        }
+    }
+}
+```
+
+#### 2. Logbook - 30-Day History Limit
+Free users see only recent sessions:
+
+```swift
+@Query(
+    filter: #Predicate<SCSession> {
+        $0.deletedAt == nil &&
+        $0.startedAt >= Date.now.addingTimeInterval(-30 * 24 * 60 * 60)
+    },
+    sort: \.startedAt,
+    order: .reverse
+)
+var recentSessions: [SCSession]
+
+// Premium users: No filter, unlimited history
+@Query(
+    filter: #Predicate<SCSession> { $0.deletedAt == nil },
+    sort: \.startedAt,
+    order: .reverse
+)
+var allSessions: [SCSession]
+```
+
+#### 3. OpenBeta Search - Premium-Only
+UseCase throws error for free users:
+
+```swift
+final class SearchOpenBetaUseCase: SearchOpenBetaUseCaseProtocol, Sendable {
+    func execute(query: String) async throws -> [OpenBetaClimb] {
+        // Check premium status
+        let isPremium = await premiumService.isPremium()
+        guard isPremium else {
+            throw PremiumError.premiumRequired
+        }
+
+        // Execute search
+        return try await openBetaClient.search(query: query)
+    }
+}
+```
+
+### Supabase Integration
+
+Premium status is synced to the `profiles` table:
+
+```sql
+-- profiles table fields
+premium_expires_at TIMESTAMPTZ
+premium_product_id TEXT
+premium_original_transaction_id TEXT
+```
+
+**Sync Flow**:
+1. User purchases subscription via StoreKit
+2. PremiumService updates local SwiftData cache
+3. PremiumService syncs to Supabase profiles table
+4. Other devices pull updated premium status on next sync
+
+### Offline-First Behavior
+
+**Premium Checks**:
+- Always check local SwiftData first
+- 7-day grace period if can't verify with StoreKit
+- Never block UI on network calls
+
+**Grace Period Logic**:
+```swift
+// ✅ GOOD: Check cached status first
+let cachedStatus = /* fetch from SwiftData */
+if cachedStatus.isValid() {
+    return true  // Use cached status
+}
+
+// Try to verify with StoreKit (non-blocking)
+Task {
+    await premiumService.refreshStatus()
+}
+
+return false  // Not premium or grace period expired
+```
+
+**Example Scenarios**:
+1. **Online**: StoreKit verification happens, cache updated
+2. **Offline < 7 days**: Cached status with valid grace period
+3. **Offline > 7 days**: Premium features locked until online
+
+### Product IDs
+
+```swift
+enum PremiumProduct {
+    static let monthly = "swiftclimb.premium.monthly"  // $4.99/month
+    static let annual = "swiftclimb.premium.annual"    // $49.99/year
+}
+```
+
+### Testing Premium Features
+
+**Xcode StoreKit Testing**:
+1. Configure StoreKit Configuration file
+2. Add product IDs and pricing
+3. Test purchase flow in simulator
+4. Test restoration flow
+5. Test subscription expiry
+
+**Manual Testing**:
+- Purchase flow with loading states
+- Error handling (failed purchase, network error)
+- Restore purchases
+- Feature gates (Insights, Logbook, OpenBeta)
+- Offline grace period (disconnect network for 7+ days)
+- Cross-device sync (purchase on device A, verify on device B)
+
+---
+
 ## Summary
 
 SwiftClimb's architecture prioritizes:
@@ -990,6 +1238,18 @@ For more specific topics, see:
 ---
 
 ## Recent Updates
+
+### 2026-01-19: Premium Subscription System
+- Implemented PremiumService actor with StoreKit 2
+- Created SCPremiumStatus SwiftData model for offline caching
+- Added 7-day offline grace period for premium subscribers
+- Implemented three premium feature gates:
+  - Insights tab: Full block with PaywallView
+  - Logbook: 30-day history limit for free users
+  - OpenBeta search: Premium-only access
+- Created PaywallView with monthly/annual pricing
+- Integrated premium status sync with Supabase profiles table
+- All premium checks follow offline-first pattern
 
 ### 2026-01-19: Supabase Auth Integration
 - Implemented complete authentication flow (sign up, sign in, sign out, token refresh)

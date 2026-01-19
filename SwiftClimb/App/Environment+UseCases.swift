@@ -173,3 +173,16 @@ protocol FeedUseCaseProtocol: Sendable {
     func loadFeed() async throws -> [SCPost]
     func toggleKudos(postId: UUID) async throws
 }
+
+// MARK: - Premium Service
+
+private struct PremiumServiceKey: EnvironmentKey {
+    static let defaultValue: PremiumServiceProtocol? = nil
+}
+
+extension EnvironmentValues {
+    var premiumService: PremiumServiceProtocol? {
+        get { self[PremiumServiceKey.self] }
+        set { self[PremiumServiceKey.self] = newValue }
+    }
+}

@@ -10,7 +10,7 @@ actor GraphQLClient {
         self.httpClient = httpClient
     }
 
-    func execute<T: Decodable>(
+    func execute<T: Decodable & Sendable>(
         query: String,
         variables: [String: Any]? = nil
     ) async throws -> T {
@@ -46,17 +46,17 @@ actor GraphQLClient {
 
 // MARK: - Supporting Types
 
-struct GraphQLResponse<T: Decodable>: Decodable {
+struct GraphQLResponse<T: Decodable & Sendable>: Decodable, Sendable {
     let data: T?
     let errors: [GraphQLError]?
 }
 
-struct GraphQLError: Decodable {
+struct GraphQLError: Decodable, Sendable {
     let message: String
     let locations: [Location]?
     let path: [String]?
 
-    struct Location: Decodable {
+    struct Location: Decodable, Sendable {
         let line: Int
         let column: Int
     }

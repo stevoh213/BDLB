@@ -7,6 +7,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Premium Subscription System (2026-01-19)
+
+#### StoreKit 2 Integration
+- **PremiumService** - Actor-based service managing StoreKit 2 transactions
+  - `isPremium()` - Check premium status with 7-day offline grace period
+  - `fetchProducts()` - Load subscription products from App Store
+  - `purchase(productId:)` - Handle subscription purchase flow
+  - `restorePurchases()` - Restore previous purchases
+  - Transaction update listener for real-time status changes
+- **SCPremiumStatus** - SwiftData model for caching premium state
+  - 7-day offline grace period for verified purchases
+  - Stores expiry date, product ID, original transaction ID
+  - `isValid()` method checks expiry with grace period
+
+#### Premium Feature Gates
+- **Insights Tab** - Full block for free users with premium upsell
+  - Shows PaywallView when free users attempt to access Insights
+  - Premium users see full analytics and insights features
+- **Logbook** - 30-day history limit for free users
+  - Free users see sessions from last 30 days only
+  - Premium users see unlimited history
+  - "Upgrade to Premium" prompt in empty state for older sessions
+- **OpenBeta Search** - Premium-only outdoor climb search
+  - `SearchOpenBetaUseCase` throws `PremiumError.premiumRequired` for free users
+  - Premium users have full access to OpenBeta outdoor climb database
+
+#### Paywall UI
+- **PaywallView** - Complete subscription purchase interface
+  - Monthly subscription ($4.99/month)
+  - Annual subscription ($49.99/year, save 17%)
+  - Feature highlights with SF Symbols icons
+  - Pricing cards with selection state
+  - Purchase button with loading states
+  - Restore purchases link
+  - Terms of service and privacy policy links
+  - Error handling with user-friendly messages
+  - Dismiss action returns to previous screen
+
+#### Supabase Integration
+- Premium status synced to `profiles` table
+- Fields: `premium_expires_at`, `premium_product_id`, `premium_original_transaction_id`
+- Sync occurs on purchase, restore, and status changes
+- Premium status visible across all user devices
+
+#### Technical Implementation
+- All premium checks happen locally first (offline-first)
+- Premium status cached in SwiftData with grace period
+- PremiumService conforms to Sendable for concurrency safety
+- @MainActor isolation for UI-facing premium checks
+- StoreKit 2 transaction updates handled asynchronously
+- Product IDs: `swiftclimb.premium.monthly`, `swiftclimb.premium.annual`
+
 ### Added - Supabase Auth Integration (2026-01-19)
 
 #### Authentication Features

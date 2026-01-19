@@ -3,27 +3,58 @@ import SwiftData
 
 @MainActor
 struct LogbookView: View {
-    // SwiftData query for completed sessions, sorted by most recent
+    @Environment(\.premiumService) private var premiumService
+    @Environment(\.modelContext) private var modelContext
+
+    // Query all completed sessions
     @Query(
         filter: #Predicate<SCSession> { $0.endedAt != nil && $0.deletedAt == nil },
         sort: \SCSession.endedAt,
         order: .reverse
     )
-    private var sessions: [SCSession]
+    private var allSessions: [SCSession]
 
-    @Environment(\.modelContext) private var modelContext
+    @State private var isPremium = false
+    @State private var showPaywall = false
+
+    // Cutoff date for free users (30 days ago)
+    private var freeTierCutoffDate: Date {
+        Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
+    }
+
+    // Sessions visible to current user
+    private var visibleSessions: [SCSession] {
+        if isPremium {
+            return allSessions
+        } else {
+            return allSessions.filter { session in
+                guard let endedAt = session.endedAt else { return false }
+                return endedAt >= freeTierCutoffDate
+            }
+        }
+    }
+
+    // Count of gated sessions
+    private var gatedSessionCount: Int {
+        allSessions.count - visibleSessions.count
+    }
 
     var body: some View {
         NavigationStack {
             Group {
-                if sessions.isEmpty {
+                if allSessions.isEmpty {
                     emptyStateView
                 } else {
                     sessionListView
                 }
             }
-            .padding()
             .navigationTitle("Logbook")
+        }
+        .task {
+            isPremium = await premiumService?.isPremium() ?? false
+        }
+        .sheet(isPresented: $showPaywall) {
+            PaywallView()
         }
     }
 
@@ -42,16 +73,23 @@ struct LogbookView: View {
                 .foregroundStyle(SCColors.textSecondary)
                 .multilineTextAlignment(.center)
         }
+        .padding()
     }
 
     @ViewBuilder
     private var sessionListView: some View {
         ScrollView {
             LazyVStack(spacing: SCSpacing.md) {
-                ForEach(sessions) { session in
+                ForEach(visibleSessions) { session in
                     sessionRow(session)
                 }
+
+                // Show upgrade prompt if there are gated sessions
+                if gatedSessionCount > 0 {
+                    gatedSessionsPrompt
+                }
             }
+            .padding()
         }
     }
 
@@ -92,7 +130,39 @@ struct LogbookView: View {
         }
         .padding()
         .background(SCColors.surfaceSecondary)
-        .cornerRadius(12)
+        .cornerRadius(SCCornerRadius.card)
+    }
+
+    @ViewBuilder
+    private var gatedSessionsPrompt: some View {
+        VStack(spacing: SCSpacing.sm) {
+            HStack {
+                Image(systemName: "lock.fill")
+                    .foregroundStyle(.tint)
+                Text("\(gatedSessionCount) older sessions")
+                    .font(SCTypography.body.weight(.semibold))
+            }
+
+            Text("Upgrade to Premium to access your complete climbing history")
+                .font(SCTypography.secondary)
+                .foregroundStyle(SCColors.textSecondary)
+                .multilineTextAlignment(.center)
+
+            Button("View Upgrade Options") {
+                showPaywall = true
+            }
+            .font(SCTypography.body.weight(.medium))
+            .padding(.top, SCSpacing.xs)
+        }
+        .padding()
+        .frame(maxWidth: .infinity)
+        .background(SCColors.surfaceSecondary.opacity(0.5))
+        .cornerRadius(SCCornerRadius.card)
+        .overlay(
+            RoundedRectangle(cornerRadius: SCCornerRadius.card)
+                .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [5]))
+                .foregroundStyle(SCColors.textSecondary.opacity(0.3))
+        )
     }
 
     private func formatDuration(_ duration: TimeInterval) -> String {
@@ -104,8 +174,4 @@ struct LogbookView: View {
             return "\(minutes)m"
         }
     }
-}
-
-#Preview {
-    LogbookView()
 }

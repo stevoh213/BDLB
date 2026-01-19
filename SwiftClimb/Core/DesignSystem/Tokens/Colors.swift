@@ -61,11 +61,13 @@ enum SCColors {
 
 extension SCColors {
     /// Returns appropriate color based on accessibility settings
+    @MainActor
     static func adaptiveColor(
         _ color: Color,
-        darkerSystemColors: Bool = UIAccessibility.isDarkerSystemColorsEnabled
+        darkerSystemColors: Bool? = nil
     ) -> Color {
-        guard darkerSystemColors else { return color }
+        let useDarker = darkerSystemColors ?? UIAccessibility.isDarkerSystemColorsEnabled
+        guard useDarker else { return color }
         return color.opacity(1.2) // System handles actual darkening
     }
 }

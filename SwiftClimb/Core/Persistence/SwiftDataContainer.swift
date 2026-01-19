@@ -10,6 +10,7 @@ final class SwiftDataContainer: Sendable {
     private init() {
         let schema = Schema([
             SCProfile.self,
+            SCPremiumStatus.self,
             SCSession.self,
             SCClimb.self,
             SCAttempt.self,

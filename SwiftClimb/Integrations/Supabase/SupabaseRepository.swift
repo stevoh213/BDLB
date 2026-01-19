@@ -42,7 +42,7 @@ actor SupabaseRepository {
     // MARK: - CRUD Operations
 
     /// Select records from a table with optional filters
-    func select<T: Decodable>(
+    func select<T: Decodable & Sendable>(
         from table: String,
         where conditions: [String: String]? = nil,
         orderBy: String? = nil,
@@ -81,7 +81,7 @@ actor SupabaseRepository {
     }
 
     /// Insert a new record into a table
-    func insert<T: Encodable, R: Decodable>(
+    func insert<T: Encodable & Sendable, R: Decodable & Sendable>(
         into table: String,
         values: T
     ) async throws -> R {
@@ -107,7 +107,7 @@ actor SupabaseRepository {
     }
 
     /// Update an existing record by ID
-    func update<T: Encodable, R: Decodable>(
+    func update<T: Encodable & Sendable, R: Decodable & Sendable>(
         table: String,
         id: UUID,
         values: T
@@ -137,7 +137,7 @@ actor SupabaseRepository {
     }
 
     /// Upsert (insert or update) a record
-    func upsert<T: Encodable, R: Decodable>(
+    func upsert<T: Encodable & Sendable, R: Decodable & Sendable>(
         into table: String,
         values: T,
         onConflict: String = "id"
@@ -192,7 +192,7 @@ actor SupabaseRepository {
     // MARK: - Sync Operations
 
     /// Fetch records updated since a timestamp for incremental sync
-    func selectUpdatedSince<T: Decodable>(
+    func selectUpdatedSince<T: Decodable & Sendable>(
         from table: String,
         since: Date,
         userId: UUID

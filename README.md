@@ -22,11 +22,13 @@ A modern iOS climbing logbook application built with SwiftUI, SwiftData, and Swi
 - Kudos and comments
 - Activity feed
 
-### Premium Features (Planned)
-- Advanced analytics and insights
-- Volume trends and pyramids
-- Grade progression tracking
-- Export functionality
+### Premium Features
+- **Subscription System**: StoreKit 2 integration with monthly and annual plans
+- **Advanced Analytics**: Insights tab with volume trends and progression (premium-gated)
+- **Unlimited History**: Full logbook access (free users limited to 30 days)
+- **OpenBeta Integration**: Search outdoor climbs from comprehensive route database (premium-only)
+- **Offline Grace Period**: 7-day offline access for verified premium subscribers
+- **Cross-Device Sync**: Premium status synced via Supabase profiles table
 
 ## Project Status
 
@@ -37,8 +39,8 @@ A modern iOS climbing logbook application built with SwiftUI, SwiftData, and Swi
 
 ### What's Implemented
 ✅ Complete project structure with Xcode workspace
-✅ 68 Swift files with actor-based concurrency
-✅ SwiftData models with 14 tables
+✅ 73 Swift files with actor-based concurrency
+✅ SwiftData models with 15 tables (including SCPremiumStatus)
 ✅ Supabase authentication (sign up, sign in, sign out, token refresh)
 ✅ Real-time username availability checking with debouncing (500ms)
 ✅ Username format validation (3-20 chars, alphanumeric + underscore, starts with letter)
@@ -46,12 +48,16 @@ A modern iOS climbing logbook application built with SwiftUI, SwiftData, and Swi
 ✅ Tab-based navigation (Session, Logbook, Insights, Feed, Profile)
 ✅ Dev bypass for testing (DEBUG builds only)
 ✅ Keychain token storage
+✅ Premium subscription system with StoreKit 2
+✅ Paywall UI with monthly/annual pricing
+✅ Premium feature gates (Insights, Logbook, OpenBeta)
+✅ 7-day offline grace period for premium subscribers
 
 ### In Progress
 🚧 Service implementations (Session, Climb, Attempt services)
 🚧 Background sync with conflict resolution
-🚧 OpenBeta GraphQL integration
 🚧 Social features (Follow, Posts, Kudos, Comments)
+🚧 Insights analytics implementation (UI built, calculations pending)
 
 See [NEXT_STEPS.md](NEXT_STEPS.md) for detailed roadmap.
 

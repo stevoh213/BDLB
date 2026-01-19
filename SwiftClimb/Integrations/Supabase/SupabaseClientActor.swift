@@ -185,7 +185,7 @@ actor SupabaseClientActor {
     /// - Parameter supabaseRequest: The request to execute
     /// - Parameter requiresAuth: If true, requires a valid session token. If false, uses anon key only.
     /// - Returns: Decoded response
-    func execute<T: Decodable>(_ supabaseRequest: SupabaseRequest, requiresAuth: Bool = true) async throws -> T {
+    func execute<T: Decodable & Sendable>(_ supabaseRequest: SupabaseRequest, requiresAuth: Bool = true) async throws -> T {
         var urlComponents = URLComponents(url: config.restURL, resolvingAgainstBaseURL: true)!
         urlComponents.path += supabaseRequest.path
 

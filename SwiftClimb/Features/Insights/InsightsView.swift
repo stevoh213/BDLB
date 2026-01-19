@@ -3,65 +3,108 @@ import SwiftData
 
 @MainActor
 struct InsightsView: View {
-    // Query user profile to check premium status
-    @Query private var profiles: [SCProfile]
-
-    @Environment(\.modelContext) private var modelContext
+    @Environment(\.premiumService) private var premiumService
 
     @State private var isPremium = false
-
-    private var currentProfile: SCProfile? {
-        profiles.first
-    }
+    @State private var isLoading = true
+    @State private var showPaywall = false
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: SCSpacing.md) {
-                if isPremium {
-                    premiumContentView
+            Group {
+                if isLoading {
+                    ProgressView()
+                } else if isPremium {
+                    PremiumInsightsContent()
                 } else {
-                    premiumUpsellView
+                    InsightsUpsellView(onUpgrade: { showPaywall = true })
                 }
             }
-            .padding()
             .navigationTitle("Insights")
         }
         .task {
-            // TODO: Load premium status from profile or subscription service
-            // For now, default to false
-            isPremium = false
+            await checkPremiumStatus()
+        }
+        .sheet(isPresented: $showPaywall) {
+            PaywallView()
         }
     }
 
-    @ViewBuilder
-    private var premiumContentView: some View {
-        Text("Premium insights coming soon")
-            .font(SCTypography.body)
-            .foregroundStyle(SCColors.textSecondary)
+    private func checkPremiumStatus() async {
+        isLoading = true
+        defer { isLoading = false }
+
+        isPremium = await premiumService?.isPremium() ?? false
     }
+}
 
-    @ViewBuilder
-    private var premiumUpsellView: some View {
-        VStack(spacing: SCSpacing.md) {
-            Image(systemName: "chart.xyaxis.line")
-                .font(.system(size: 60))
-                .foregroundStyle(SCColors.textSecondary)
+// MARK: - Premium Content
 
-            Text("Premium Feature")
-                .font(SCTypography.sectionHeader)
-
-            Text("Upgrade to access detailed insights and analytics")
-                .font(SCTypography.secondary)
-                .foregroundStyle(SCColors.textSecondary)
-                .multilineTextAlignment(.center)
-
-            SCPrimaryButton(title: "Upgrade to Premium", action: {
-                // TODO: Navigate to subscription flow
-            }, isFullWidth: true)
+@MainActor
+private struct PremiumInsightsContent: View {
+    var body: some View {
+        ScrollView {
+            VStack(spacing: SCSpacing.lg) {
+                // TODO: Implement actual insights content
+                Text("Premium insights content")
+                    .font(SCTypography.body)
+            }
+            .padding()
         }
     }
 }
 
-#Preview {
-    InsightsView()
+// MARK: - Upsell View
+
+@MainActor
+private struct InsightsUpsellView: View {
+    let onUpgrade: () -> Void
+
+    var body: some View {
+        VStack(spacing: SCSpacing.lg) {
+            Spacer()
+
+            Image(systemName: "chart.xyaxis.line")
+                .font(.system(size: 80))
+                .foregroundStyle(SCColors.textSecondary)
+
+            Text("Unlock Your Climbing Insights")
+                .font(SCTypography.screenHeader)
+                .multilineTextAlignment(.center)
+
+            VStack(alignment: .leading, spacing: SCSpacing.sm) {
+                FeatureRow(icon: "chart.line.uptrend.xyaxis", text: "Track grade progression over time")
+                FeatureRow(icon: "calendar", text: "View climbing frequency trends")
+                FeatureRow(icon: "figure.climbing", text: "Analyze send rates by discipline")
+                FeatureRow(icon: "brain.head.profile", text: "Identify strengths and weaknesses")
+            }
+            .padding()
+            .background(SCColors.surfaceSecondary)
+            .cornerRadius(SCCornerRadius.card)
+
+            Spacer()
+
+            SCPrimaryButton(
+                title: "Upgrade to Premium",
+                action: onUpgrade,
+                isFullWidth: true
+            )
+        }
+        .padding()
+    }
+}
+
+private struct FeatureRow: View {
+    let icon: String
+    let text: String
+
+    var body: some View {
+        HStack(spacing: SCSpacing.sm) {
+            Image(systemName: icon)
+                .foregroundStyle(.tint)
+                .frame(width: 24)
+            Text(text)
+                .font(SCTypography.body)
+        }
+    }
 }

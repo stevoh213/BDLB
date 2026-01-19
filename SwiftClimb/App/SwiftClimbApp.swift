@@ -26,12 +26,11 @@ struct SwiftClimbApp: App {
     let toggleFollowUseCase: ToggleFollowUseCaseProtocol
     let searchOpenBetaUseCase: SearchOpenBetaUseCaseProtocol
 
+    // Premium service
+    let premiumService: PremiumServiceProtocol?
+
     init() {
-        do {
-            modelContainer = try SwiftDataContainer.shared.container
-        } catch {
-            fatalError("Failed to initialize ModelContainer: \(error)")
-        }
+        modelContainer = SwiftDataContainer.shared.container
 
         // Initialize Supabase auth
         let supabaseClient = SupabaseClientActor(config: .shared)
@@ -46,14 +45,26 @@ struct SwiftClimbApp: App {
         let attemptService = AttemptService()
         let socialService = SocialService()
 
-        // Initialize use cases with services
+        // Initialize premium service (only if authenticated)
+        if let userId = authMgr.currentUserId {
+            let premiumSync = PremiumSyncImpl(repository: supabaseRepository)
+            premiumService = PremiumServiceImpl(
+                modelContext: modelContainer.mainContext,
+                userId: userId,
+                supabaseSync: premiumSync
+            )
+        } else {
+            premiumService = nil
+        }
+
+        // Initialize use cases with services (some need premium service)
         startSessionUseCase = StartSessionUseCase(sessionService: sessionService)
         endSessionUseCase = EndSessionUseCase(sessionService: sessionService)
         addClimbUseCase = AddClimbUseCase(climbService: climbService)
         logAttemptUseCase = LogAttemptUseCase(attemptService: attemptService)
         createPostUseCase = CreatePostUseCase(socialService: socialService)
         toggleFollowUseCase = ToggleFollowUseCase(socialService: socialService)
-        searchOpenBetaUseCase = SearchOpenBetaUseCase()
+        searchOpenBetaUseCase = SearchOpenBetaUseCase(premiumService: premiumService)
     }
 
     #if DEBUG
@@ -74,6 +85,7 @@ struct SwiftClimbApp: App {
                         .environment(\.createPostUseCase, createPostUseCase)
                         .environment(\.toggleFollowUseCase, toggleFollowUseCase)
                         .environment(\.searchOpenBetaUseCase, searchOpenBetaUseCase)
+                        .environment(\.premiumService, premiumService)
                 } else {
                     #if DEBUG
                     AuthView(authManager: authManager, onDevBypass: {
@@ -86,6 +98,10 @@ struct SwiftClimbApp: App {
             }
             .task {
                 await authManager.loadSession()
+            }
+            .task {
+                // Listen for StoreKit transaction updates
+                await premiumService?.listenForTransactionUpdates()
             }
         }
         .modelContainer(modelContainer)
