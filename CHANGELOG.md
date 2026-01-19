@@ -46,10 +46,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Dismiss action returns to previous screen
 
 #### Supabase Integration
-- Premium status synced to `profiles` table
-- Fields: `premium_expires_at`, `premium_product_id`, `premium_original_transaction_id`
-- Sync occurs on purchase, restore, and status changes
-- Premium status visible across all user devices
+- Premium status synced to `profiles` table for support team queries
+- Database migration adds three columns: `premium_expires_at`, `premium_product_id`, `premium_original_transaction_id`
+- Indexed on `premium_expires_at` for efficient support queries
+- `PremiumSyncImpl` actor syncs status to Supabase after StoreKit verification
+- `ProfileDTO` updated to include premium fields with snake_case mapping
+- `fetchRemotePremiumStatus()` retrieves premium info from server
+- Sync occurs non-blocking after purchase, restore, and status changes
+- Premium status visible across all user devices and accessible to support team
 
 #### Technical Implementation
 - All premium checks happen locally first (offline-first)

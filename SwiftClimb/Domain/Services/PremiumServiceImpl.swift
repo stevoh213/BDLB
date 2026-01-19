@@ -3,7 +3,12 @@ import StoreKit
 import SwiftData
 
 /// StoreKit 2-based premium service implementation
-actor PremiumServiceImpl: PremiumServiceProtocol {
+///
+/// Uses @MainActor isolation because it interacts with SwiftData's ModelContext,
+/// which is MainActor-isolated. StoreKit 2 operations are async and work fine
+/// from MainActor context.
+@MainActor
+final class PremiumServiceImpl: PremiumServiceProtocol {
     private let modelContext: ModelContext
     private let userId: UUID
     private let supabaseSync: PremiumSyncProtocol?

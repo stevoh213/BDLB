@@ -29,6 +29,7 @@ A modern iOS climbing logbook application built with SwiftUI, SwiftData, and Swi
 - **OpenBeta Integration**: Search outdoor climbs from comprehensive route database (premium-only)
 - **Offline Grace Period**: 7-day offline access for verified premium subscribers
 - **Cross-Device Sync**: Premium status synced via Supabase profiles table
+- **Support Team Access**: Premium subscription data stored in Supabase for customer support queries
 
 ## Project Status
 

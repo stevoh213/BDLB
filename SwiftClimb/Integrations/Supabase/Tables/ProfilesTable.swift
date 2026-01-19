@@ -90,6 +90,23 @@ actor ProfilesTable {
 
 // MARK: - Data Transfer Object
 
+/// Profile data transfer object for Supabase `profiles` table.
+///
+/// This DTO includes all profile fields plus premium subscription data.
+/// Premium fields are synced from StoreKit 2 to enable:
+/// - Cross-device premium status visibility
+/// - Support team subscription queries
+/// - Server-side analytics
+///
+/// ## Premium Fields
+///
+/// The three premium fields are updated by `PremiumSyncImpl` after StoreKit
+/// verification:
+/// - `premiumExpiresAt`: When subscription expires (nil = free/lifetime)
+/// - `premiumProductId`: StoreKit product ID (e.g., "swiftclimb.premium.monthly")
+/// - `premiumOriginalTransactionId`: Original transaction ID for support
+///
+/// - SeeAlso: `PremiumSyncImpl` for the sync implementation.
 struct ProfileDTO: Codable, Sendable {
     let id: UUID
     let handle: String
@@ -101,6 +118,25 @@ struct ProfileDTO: Codable, Sendable {
     let createdAt: Date
     let updatedAt: Date
 
+    // Premium subscription fields (synced from StoreKit 2)
+
+    /// When the premium subscription expires.
+    ///
+    /// - nil: User is on free tier or has lifetime subscription
+    /// - Past date: Subscription has expired
+    /// - Future date: Active subscription until this date
+    let premiumExpiresAt: Date?
+
+    /// StoreKit product identifier for active subscription.
+    ///
+    /// Examples: "swiftclimb.premium.monthly", "swiftclimb.premium.annual"
+    let premiumProductId: String?
+
+    /// Original transaction ID from StoreKit.
+    ///
+    /// Used by support team to look up subscription details in App Store Connect.
+    let premiumOriginalTransactionId: String?
+
     enum CodingKeys: String, CodingKey {
         case id
         case handle
@@ -111,6 +147,9 @@ struct ProfileDTO: Codable, Sendable {
         case isPublic = "is_public"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
+        case premiumExpiresAt = "premium_expires_at"
+        case premiumProductId = "premium_product_id"
+        case premiumOriginalTransactionId = "premium_original_transaction_id"
     }
 }
 

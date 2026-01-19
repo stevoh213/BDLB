@@ -51,7 +51,10 @@ final class SupabaseAuthManager {
                 preferredGradeScaleRoute: "YDS",
                 isPublic: false,
                 createdAt: Date(),
-                updatedAt: Date()
+                updatedAt: Date(),
+                premiumExpiresAt: nil,
+                premiumProductId: nil,
+                premiumOriginalTransactionId: nil
             )
 
             let createdProfile = try await profilesTable.createProfile(profile)
@@ -97,7 +100,10 @@ final class SupabaseAuthManager {
                     preferredGradeScaleRoute: "YDS",
                     isPublic: false,
                     createdAt: Date(),
-                    updatedAt: Date()
+                    updatedAt: Date(),
+                    premiumExpiresAt: nil,
+                    premiumProductId: nil,
+                    premiumOriginalTransactionId: nil
                 )
                 currentProfile = try await profilesTable.createProfile(profile)
             }

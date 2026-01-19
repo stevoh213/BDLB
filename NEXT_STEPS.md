@@ -165,7 +165,8 @@
    - ✅ Restore purchases
    - ✅ PaywallView with monthly/annual pricing
    - ✅ 7-day offline grace period
-   - ✅ Supabase premium status sync
+   - ✅ Supabase premium status sync (syncPremiumStatus + fetchRemotePremiumStatus)
+   - ✅ Database migration with premium columns indexed for support queries
 
 ---
 

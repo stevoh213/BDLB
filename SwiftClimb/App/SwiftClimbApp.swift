@@ -26,16 +26,20 @@ struct SwiftClimbApp: App {
     let toggleFollowUseCase: ToggleFollowUseCaseProtocol
     let searchOpenBetaUseCase: SearchOpenBetaUseCaseProtocol
 
-    // Premium service
-    let premiumService: PremiumServiceProtocol?
+    // Premium service - recreated on auth state change
+    @State private var premiumService: PremiumServiceProtocol?
+
+    // Store repository for recreating premium service after login
+    private let supabaseRepository: SupabaseRepository
 
     init() {
         modelContainer = SwiftDataContainer.shared.container
 
         // Initialize Supabase auth
         let supabaseClient = SupabaseClientActor(config: .shared)
-        let supabaseRepository = SupabaseRepository(client: supabaseClient)
-        let profilesTable = ProfilesTable(repository: supabaseRepository)
+        let repository = SupabaseRepository(client: supabaseClient)
+        self.supabaseRepository = repository
+        let profilesTable = ProfilesTable(repository: repository)
         let authMgr = SupabaseAuthManager(client: supabaseClient, profilesTable: profilesTable)
         self._authManager = State(initialValue: authMgr)
 
@@ -45,26 +49,17 @@ struct SwiftClimbApp: App {
         let attemptService = AttemptService()
         let socialService = SocialService()
 
-        // Initialize premium service (only if authenticated)
-        if let userId = authMgr.currentUserId {
-            let premiumSync = PremiumSyncImpl(repository: supabaseRepository)
-            premiumService = PremiumServiceImpl(
-                modelContext: modelContainer.mainContext,
-                userId: userId,
-                supabaseSync: premiumSync
-            )
-        } else {
-            premiumService = nil
-        }
+        // Premium service starts nil, created after authentication
+        self._premiumService = State(initialValue: nil)
 
-        // Initialize use cases with services (some need premium service)
+        // Initialize use cases with services
         startSessionUseCase = StartSessionUseCase(sessionService: sessionService)
         endSessionUseCase = EndSessionUseCase(sessionService: sessionService)
         addClimbUseCase = AddClimbUseCase(climbService: climbService)
         logAttemptUseCase = LogAttemptUseCase(attemptService: attemptService)
         createPostUseCase = CreatePostUseCase(socialService: socialService)
         toggleFollowUseCase = ToggleFollowUseCase(socialService: socialService)
-        searchOpenBetaUseCase = SearchOpenBetaUseCase(premiumService: premiumService)
+        searchOpenBetaUseCase = SearchOpenBetaUseCase(premiumService: nil)
     }
 
     #if DEBUG
@@ -99,12 +94,39 @@ struct SwiftClimbApp: App {
             .task {
                 await authManager.loadSession()
             }
-            .task {
-                // Listen for StoreKit transaction updates
+            .task(id: premiumService != nil) {
+                // Listen for StoreKit transaction updates when service exists
                 await premiumService?.listenForTransactionUpdates()
             }
+            .onChange(of: authManager.isAuthenticated) { _, isAuthenticated in
+                updatePremiumService(isAuthenticated: isAuthenticated)
+            }
+            #if DEBUG
+            .onChange(of: devBypassEnabled) { _, enabled in
+                if enabled {
+                    updatePremiumService(isAuthenticated: true)
+                }
+            }
+            #endif
         }
         .modelContainer(modelContainer)
+    }
+
+    // MARK: - Premium Service Lifecycle
+
+    @MainActor
+    private func updatePremiumService(isAuthenticated: Bool) {
+        if isAuthenticated, let userId = currentUserId {
+            let premiumSync = PremiumSyncImpl(repository: supabaseRepository)
+            let context = modelContainer.mainContext
+            premiumService = PremiumServiceImpl(
+                modelContext: context,
+                userId: userId,
+                supabaseSync: premiumSync
+            )
+        } else {
+            premiumService = nil
+        }
     }
 
     // MARK: - Auth Helpers
