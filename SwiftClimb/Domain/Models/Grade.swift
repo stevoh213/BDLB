@@ -97,7 +97,7 @@ extension Grade {
     }
 
     // MARK: - YDS Grade (Route Climbing)
-    // 5.0-5.9, 5.10a-5.10d, ... 5.15a-5.15d
+    // 5.0-5.9, 5.9+/-, 5.10a-5.10d, ... 5.15a-5.15d
 
     private static func parseYDSGrade(_ input: String) -> Grade? {
         guard input.hasPrefix("5.") else { return nil }
@@ -133,6 +133,9 @@ extension Grade {
             } else if "ABCD".contains(char) {
                 modifier = String(char)
                 break
+            } else if "+-".contains(char) {
+                modifier = String(char)
+                break
             }
         }
 
@@ -140,17 +143,30 @@ extension Grade {
             return nil
         }
 
+        // +/- modifiers only valid for 5.9 and above (before letter grades start at 5.10)
+        if let mod = modifier, "+-".contains(mod), number < 9 {
+            return nil
+        }
+
         return (number, modifier)
     }
 
     private static func ydsToScore(_ number: Int, modifier: String?) -> Int {
-        // 5.0 = 5, 5.9 = 25, 5.10a = 30, 5.15d = 100
+        // 5.0 = 5, 5.9 = 25, 5.9+ = 27, 5.10a = 30, 5.15d = 100
         var score: Int
 
         if number <= 9 {
             score = 5 + (number * 20 / 9)
+            // Handle +/- for 5.9
+            if number == 9 {
+                switch modifier {
+                case "+": score += 2
+                case "-": score -= 2
+                default: break
+                }
+            }
         } else {
-            // 5.10+ grades with modifiers
+            // 5.10+ grades with letter modifiers
             let baseScore = 26 + ((number - 10) * 12)
             let modifierOffset: Int
             switch modifier {
