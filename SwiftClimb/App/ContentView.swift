@@ -9,6 +9,7 @@ struct ContentView: View {
         case logbook
         case insights
         case feed
+        case search
         case profile
     }
 
@@ -38,7 +39,13 @@ struct ContentView: View {
                 }
                 .tag(Tab.feed)
 
-            ProfileView()
+            ProfileSearchView()
+                .tabItem {
+                    Label("Search", systemImage: "magnifyingglass")
+                }
+                .tag(Tab.search)
+
+            MyProfileView()
                 .tabItem {
                     Label("Profile", systemImage: "person.fill")
                 }

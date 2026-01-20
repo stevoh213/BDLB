@@ -33,10 +33,15 @@ import Foundation
 /// )
 /// ```
 actor SupabaseRepository {
-    private let client: SupabaseClientActor
+    private let _client: SupabaseClientActor
+
+    /// Exposed client for direct request execution (used by table actors for complex queries)
+    var client: SupabaseClientActor {
+        _client
+    }
 
     init(client: SupabaseClientActor) {
-        self.client = client
+        self._client = client
     }
 
     // MARK: - CRUD Operations
@@ -77,7 +82,7 @@ actor SupabaseRepository {
             queryParams: queryParams
         )
 
-        return try await client.execute(request, requiresAuth: requiresAuth)
+        return try await _client.execute(request, requiresAuth: requiresAuth)
     }
 
     /// Insert a new record into a table
@@ -99,7 +104,7 @@ actor SupabaseRepository {
         )
 
         // Supabase returns an array, take first element
-        let result: [R] = try await client.execute(request)
+        let result: [R] = try await _client.execute(request)
         guard let first = result.first else {
             throw NetworkError.serverError("Insert returned no data")
         }
@@ -129,7 +134,7 @@ actor SupabaseRepository {
         )
 
         // Supabase returns an array, take first element
-        let result: [R] = try await client.execute(request)
+        let result: [R] = try await _client.execute(request)
         guard let first = result.first else {
             throw NetworkError.serverError("Update returned no data")
         }
@@ -160,7 +165,7 @@ actor SupabaseRepository {
         )
 
         // Supabase returns an array, take first element
-        let result: [R] = try await client.execute(request)
+        let result: [R] = try await _client.execute(request)
         guard let first = result.first else {
             throw NetworkError.serverError("Upsert returned no data")
         }

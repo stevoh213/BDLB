@@ -135,24 +135,82 @@ extension EnvironmentValues {
     }
 }
 
-// MARK: - Profile Use Case (TODO: Implement)
+// MARK: - Update Profile Use Case
 
-private struct ProfileUseCaseKey: EnvironmentKey {
-    static let defaultValue: ProfileUseCaseProtocol? = nil
+private struct UpdateProfileUseCaseKey: EnvironmentKey {
+    static let defaultValue: UpdateProfileUseCaseProtocol? = nil
 }
 
 extension EnvironmentValues {
-    var profileUseCase: ProfileUseCaseProtocol? {
-        get { self[ProfileUseCaseKey.self] }
-        set { self[ProfileUseCaseKey.self] = newValue }
+    var updateProfileUseCase: UpdateProfileUseCaseProtocol? {
+        get { self[UpdateProfileUseCaseKey.self] }
+        set { self[UpdateProfileUseCaseKey.self] = newValue }
     }
 }
 
-/// Placeholder protocol for profile operations (needs implementation)
-/// Note: Sign-out is handled by AuthManager, not ProfileUseCase
-protocol ProfileUseCaseProtocol: Sendable {
-    func loadProfile() async throws -> SCProfile
-    func updateProfile(displayName: String?, bio: String?) async throws
+// MARK: - Search Profiles Use Case
+
+private struct SearchProfilesUseCaseKey: EnvironmentKey {
+    static let defaultValue: SearchProfilesUseCaseProtocol? = nil
+}
+
+extension EnvironmentValues {
+    var searchProfilesUseCase: SearchProfilesUseCaseProtocol? {
+        get { self[SearchProfilesUseCaseKey.self] }
+        set { self[SearchProfilesUseCaseKey.self] = newValue }
+    }
+}
+
+// MARK: - Upload Profile Photo Use Case
+
+private struct UploadProfilePhotoUseCaseKey: EnvironmentKey {
+    static let defaultValue: UploadProfilePhotoUseCaseProtocol? = nil
+}
+
+extension EnvironmentValues {
+    var uploadProfilePhotoUseCase: UploadProfilePhotoUseCaseProtocol? {
+        get { self[UploadProfilePhotoUseCaseKey.self] }
+        set { self[UploadProfilePhotoUseCaseKey.self] = newValue }
+    }
+}
+
+// MARK: - Get Followers Use Case
+
+private struct GetFollowersUseCaseKey: EnvironmentKey {
+    static let defaultValue: GetFollowersUseCaseProtocol? = nil
+}
+
+extension EnvironmentValues {
+    var getFollowersUseCase: GetFollowersUseCaseProtocol? {
+        get { self[GetFollowersUseCaseKey.self] }
+        set { self[GetFollowersUseCaseKey.self] = newValue }
+    }
+}
+
+// MARK: - Get Following Use Case
+
+private struct GetFollowingUseCaseKey: EnvironmentKey {
+    static let defaultValue: GetFollowingUseCaseProtocol? = nil
+}
+
+extension EnvironmentValues {
+    var getFollowingUseCase: GetFollowingUseCaseProtocol? {
+        get { self[GetFollowingUseCaseKey.self] }
+        set { self[GetFollowingUseCaseKey.self] = newValue }
+    }
+}
+
+// MARK: - Fetch Profile Use Case
+
+private struct FetchProfileUseCaseKey: EnvironmentKey {
+    static let defaultValue: FetchProfileUseCaseProtocol? = nil
+}
+
+extension EnvironmentValues {
+    var fetchProfileUseCase: FetchProfileUseCaseProtocol? {
+        get { self[FetchProfileUseCaseKey.self] }
+        set { self[FetchProfileUseCaseKey.self] = newValue }
+    }
 }
 
 // MARK: - Feed Use Case (TODO: Implement)

@@ -24,15 +24,11 @@ final class CreatePostUseCase: CreatePostUseCaseProtocol, @unchecked Sendable {
         climbId: UUID?,
         content: String?
     ) async throws -> SCPost {
-        // TODO: Implement use case
+        // TODO: Implement use case in Phase 3
         // 1. Validate at least one of sessionId/climbId/content is present
         // 2. Create post via service
         // 3. Mark for sync
-        return try await socialService.createPost(
-            authorId: authorId,
-            sessionId: sessionId,
-            climbId: climbId,
-            content: content
-        )
+        // Note: Service createPost signature changed to void in Phase 2
+        fatalError("Post creation not yet implemented")
     }
 }

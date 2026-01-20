@@ -52,6 +52,15 @@ struct SyncOperation: Identifiable, Sendable {
         case insertAttempt(attemptId: UUID)
         case updateAttempt(attemptId: UUID)
         case deleteAttempt(attemptId: UUID)
+
+        // Profile sync operations (Phase 6)
+        case insertProfile(profileId: UUID)
+        case updateProfile(profileId: UUID)
+        case deleteProfile(profileId: UUID)
+
+        // Follow sync operations (Phase 6)
+        case insertFollow(followId: UUID)
+        case deleteFollow(followId: UUID)
     }
 
     let id: UUID
@@ -98,12 +107,16 @@ extension SyncOperation.OperationType {
             return "climb"
         case .insertAttempt, .updateAttempt, .deleteAttempt:
             return "attempt"
+        case .insertProfile, .updateProfile, .deleteProfile:
+            return "profile"
+        case .insertFollow, .deleteFollow:
+            return "follow"
         }
     }
 
     var isDelete: Bool {
         switch self {
-        case .deleteSession, .deleteClimb, .deleteAttempt:
+        case .deleteSession, .deleteClimb, .deleteAttempt, .deleteProfile, .deleteFollow:
             return true
         default:
             return false

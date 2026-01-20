@@ -25,4 +25,9 @@ struct SupabaseConfig: Sendable {
     var restURL: URL {
         url.appendingPathComponent("rest/v1")
     }
+
+    /// Base URL for Storage API endpoints
+    var storageURL: URL {
+        url.appendingPathComponent("storage/v1")
+    }
 }
