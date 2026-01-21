@@ -3,7 +3,7 @@ import SwiftData
 
 @MainActor
 struct SessionView: View {
-    // SwiftData query for active sessions
+    // MARK: - SwiftData Query
     @Query(
         filter: #Predicate<SCSession> { $0.endedAt == nil && $0.deletedAt == nil },
         sort: \SCSession.startedAt,
@@ -11,120 +11,140 @@ struct SessionView: View {
     )
     private var activeSessions: [SCSession]
 
+    // MARK: - Environment
     @Environment(\.modelContext) private var modelContext
     @Environment(\.startSessionUseCase) private var startSessionUseCase
+    @Environment(\.endSessionUseCase) private var endSessionUseCase
     @Environment(\.currentUserId) private var currentUserId
+    @Environment(\.syncActor) private var syncActor
 
+    // MARK: - State
+    @State private var showStartSheet = false
+    @State private var showEndSheet = false
     @State private var errorMessage: String?
-    @State private var isStartingSession = false
+    @State private var isLoading = false
+    @State private var isSyncing = false
 
     private var activeSession: SCSession? {
         activeSessions.first
     }
 
+    // MARK: - Body
     var body: some View {
         NavigationStack {
-            VStack(spacing: SCSpacing.lg) {
+            ScrollView {
                 if let session = activeSession {
-                    activeSessionView(session)
+                    ActiveSessionContent(
+                        session: session,
+                        onEndSession: { showEndSheet = true }
+                    )
                 } else {
-                    emptyStateView
-                }
-
-                if let errorMessage = errorMessage {
-                    Text(errorMessage)
-                        .font(SCTypography.secondary)
-                        .foregroundStyle(.red)
-                        .multilineTextAlignment(.center)
+                    EmptySessionState(onStartSession: { showStartSheet = true })
                 }
             }
-            .padding()
+            .refreshable {
+                await performManualSync()
+            }
             .navigationTitle("Session")
-        }
-    }
-
-    @ViewBuilder
-    private func activeSessionView(_ session: SCSession) -> some View {
-        VStack(spacing: SCSpacing.md) {
-            Text("Active Session")
-                .font(SCTypography.screenHeader)
-
-            Text("Started: \(session.startedAt.formatted(date: .omitted, time: .shortened))")
-                .font(SCTypography.body)
-                .foregroundStyle(SCColors.textSecondary)
-
-            if let mentalReadiness = session.mentalReadiness {
-                Text("Mental Readiness: \(mentalReadiness)/5")
-                    .font(SCTypography.secondary)
+            .toolbar {
+                if activeSession != nil {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("End") {
+                            showEndSheet = true
+                        }
+                        .fontWeight(.semibold)
+                    }
+                }
             }
-
-            if let physicalReadiness = session.physicalReadiness {
-                Text("Physical Readiness: \(physicalReadiness)/5")
-                    .font(SCTypography.secondary)
-            }
-
-            Text("\(session.climbs.count) climbs logged")
-                .font(SCTypography.secondary)
-                .foregroundStyle(SCColors.textSecondary)
-
-            Text("Session features coming soon")
-                .font(SCTypography.body)
-                .foregroundStyle(SCColors.textSecondary)
-                .padding(.top, SCSpacing.md)
         }
-    }
-
-    @ViewBuilder
-    private var emptyStateView: some View {
-        VStack(spacing: SCSpacing.md) {
-            Image(systemName: "figure.climbing")
-                .font(.system(size: 60))
-                .foregroundStyle(SCColors.textSecondary)
-
-            Text("No Active Session")
-                .font(SCTypography.sectionHeader)
-
-            Text("Start a session to begin logging climbs")
-                .font(SCTypography.secondary)
-                .foregroundStyle(SCColors.textSecondary)
-                .multilineTextAlignment(.center)
-
-            SCPrimaryButton(
-                title: isStartingSession ? "Starting..." : "Start Session",
-                action: startSession,
-                isFullWidth: true
+        .sheet(isPresented: $showStartSheet) {
+            StartSessionSheet(
+                onStart: startNewSession,
+                isLoading: isLoading
             )
-            .disabled(isStartingSession)
+        }
+        .sheet(isPresented: $showEndSheet) {
+            if let session = activeSession {
+                EndSessionSheet(
+                    session: session,
+                    onEnd: endCurrentSession,
+                    isLoading: isLoading
+                )
+            }
+        }
+        .alert("Error", isPresented: .init(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )) {
+            Button("OK") { errorMessage = nil }
+        } message: {
+            Text(errorMessage ?? "")
         }
     }
 
-    private func startSession() {
-        guard let startSessionUseCase = startSessionUseCase else {
+    // MARK: - Actions
+
+    private func startNewSession(mentalReadiness: Int?, physicalReadiness: Int?) {
+        guard let useCase = startSessionUseCase,
+              let userId = currentUserId else {
             errorMessage = "Session service not available"
             return
         }
 
-        guard let userId = currentUserId else {
-            errorMessage = "User not authenticated"
-            return
-        }
-
-        isStartingSession = true
-        errorMessage = nil
+        isLoading = true
 
         Task {
             do {
-                let newSession = try await startSessionUseCase.execute(
+                _ = try await useCase.execute(
                     userId: userId,
-                    mentalReadiness: nil,
-                    physicalReadiness: nil
+                    mentalReadiness: mentalReadiness,
+                    physicalReadiness: physicalReadiness
                 )
-                modelContext.insert(newSession)
-                try modelContext.save()
+                showStartSheet = false
             } catch {
-                errorMessage = "Failed to start session: \(error.localizedDescription)"
+                errorMessage = error.localizedDescription
             }
-            isStartingSession = false
+            isLoading = false
+        }
+    }
+
+    private func endCurrentSession(rpe: Int?, pumpLevel: Int?, notes: String?) {
+        guard let useCase = endSessionUseCase,
+              let session = activeSession else {
+            errorMessage = "Session service not available"
+            return
+        }
+
+        isLoading = true
+
+        Task {
+            do {
+                try await useCase.execute(
+                    sessionId: session.id,
+                    rpe: rpe,
+                    pumpLevel: pumpLevel,
+                    notes: notes
+                )
+                showEndSheet = false
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+            isLoading = false
+        }
+    }
+
+    // MARK: - Sync
+
+    private func performManualSync() async {
+        guard let syncActor = syncActor, let userId = currentUserId else { return }
+
+        isSyncing = true
+        defer { isSyncing = false }
+
+        do {
+            try await syncActor.performSync(userId: userId)
+        } catch {
+            print("Manual sync failed: \(error)")
         }
     }
 }

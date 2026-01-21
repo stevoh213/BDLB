@@ -12,12 +12,14 @@ struct MyProfileView: View {
     @Environment(\.authManager) private var authManager
     @Environment(\.currentUserId) private var currentUserId
     @Environment(\.uploadProfilePhotoUseCase) private var uploadProfilePhotoUseCase
+    @Environment(\.syncActor) private var syncActor
 
     // MARK: - View State
     @State private var showingEditSheet = false
     @State private var showingPhotoPicker = false
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var isUploadingPhoto = false
+    @State private var isSyncing = false
     @State private var errorMessage: String?
     @State private var navigationPath = NavigationPath()
 
@@ -50,6 +52,9 @@ struct MyProfileView: View {
                     signOutButton
                 }
                 .padding()
+            }
+            .refreshable {
+                await performManualSync()
             }
             .navigationTitle("Profile")
             .toolbar {
@@ -220,6 +225,19 @@ struct MyProfileView: View {
     }
 
     // MARK: - Actions
+
+    private func performManualSync() async {
+        guard let syncActor = syncActor, let userId = currentUserId else { return }
+
+        isSyncing = true
+        defer { isSyncing = false }
+
+        do {
+            try await syncActor.performSync(userId: userId)
+        } catch {
+            print("Manual sync failed: \(error)")
+        }
+    }
 
     private func handlePhotoSelection(_ item: PhotosPickerItem?) async {
         guard let item = item,

@@ -13,13 +13,16 @@ struct FeedView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.feedUseCase) private var feedUseCase
+    @Environment(\.syncActor) private var syncActor
+    @Environment(\.currentUserId) private var currentUserId
 
     @State private var errorMessage: String?
     @State private var isLoading = false
+    @State private var isSyncing = false
 
     var body: some View {
         NavigationStack {
-            Group {
+            ScrollView {
                 if posts.isEmpty {
                     emptyStateView
                 } else {
@@ -33,6 +36,9 @@ struct FeedView: View {
                         .multilineTextAlignment(.center)
                         .padding()
                 }
+            }
+            .refreshable {
+                await performManualSync()
             }
             .navigationTitle("Feed")
         }
@@ -61,14 +67,12 @@ struct FeedView: View {
 
     @ViewBuilder
     private var feedListView: some View {
-        ScrollView {
-            LazyVStack(spacing: SCSpacing.md) {
-                ForEach(posts) { post in
-                    postRow(post)
-                }
+        LazyVStack(spacing: SCSpacing.md) {
+            ForEach(posts) { post in
+                postRow(post)
             }
-            .padding()
         }
+        .padding()
     }
 
     @ViewBuilder
@@ -142,6 +146,21 @@ struct FeedView: View {
             try await feedUseCase.toggleKudos(postId: post.id)
         } catch {
             errorMessage = "Failed to toggle kudos: \(error.localizedDescription)"
+        }
+    }
+
+    private func performManualSync() async {
+        guard let syncActor = syncActor, let userId = currentUserId else { return }
+
+        isSyncing = true
+        defer { isSyncing = false }
+
+        do {
+            try await syncActor.performSync(userId: userId)
+            // Reload feed after sync
+            await loadFeed()
+        } catch {
+            print("Manual sync failed: \(error)")
         }
     }
 }

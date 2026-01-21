@@ -4,21 +4,28 @@ import SwiftData
 @MainActor
 struct InsightsView: View {
     @Environment(\.premiumService) private var premiumService
+    @Environment(\.syncActor) private var syncActor
+    @Environment(\.currentUserId) private var currentUserId
 
     @State private var isPremium = false
     @State private var isLoading = true
     @State private var showPaywall = false
+    @State private var isSyncing = false
 
     var body: some View {
         NavigationStack {
-            Group {
+            ScrollView {
                 if isLoading {
                     ProgressView()
+                        .frame(maxWidth: .infinity, minHeight: 200)
                 } else if isPremium {
                     PremiumInsightsContent()
                 } else {
                     InsightsUpsellView(onUpgrade: { showPaywall = true })
                 }
+            }
+            .refreshable {
+                await performManualSync()
             }
             .navigationTitle("Insights")
         }
@@ -27,6 +34,21 @@ struct InsightsView: View {
         }
         .sheet(isPresented: $showPaywall) {
             PaywallView()
+        }
+    }
+
+    private func performManualSync() async {
+        guard let syncActor = syncActor, let userId = currentUserId else { return }
+
+        isSyncing = true
+        defer { isSyncing = false }
+
+        do {
+            try await syncActor.performSync(userId: userId)
+            // Re-check premium status after sync
+            await checkPremiumStatus()
+        } catch {
+            print("Manual sync failed: \(error)")
         }
     }
 
@@ -43,14 +65,12 @@ struct InsightsView: View {
 @MainActor
 private struct PremiumInsightsContent: View {
     var body: some View {
-        ScrollView {
-            VStack(spacing: SCSpacing.lg) {
-                // TODO: Implement actual insights content
-                Text("Premium insights content")
-                    .font(SCTypography.body)
-            }
-            .padding()
+        VStack(spacing: SCSpacing.lg) {
+            // TODO: Implement actual insights content
+            Text("Premium insights content")
+                .font(SCTypography.body)
         }
+        .padding()
     }
 }
 
