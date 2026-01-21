@@ -203,18 +203,26 @@ actor SupabaseClientActor {
         request.setValue(config.anonKey, forHTTPHeaderField: "apikey")
 
         // Add Prefer header for POST/PATCH/PUT to return the created/updated row
+        // For upserts, also add resolution=merge-duplicates
         if ["POST", "PATCH", "PUT"].contains(supabaseRequest.method) {
-            request.setValue("return=representation", forHTTPHeaderField: "Prefer")
+            if supabaseRequest.isUpsert {
+                request.setValue("return=representation,resolution=merge-duplicates", forHTTPHeaderField: "Prefer")
+            } else {
+                request.setValue("return=representation", forHTTPHeaderField: "Prefer")
+            }
         }
 
         // Add Bearer token if available (for authenticated requests)
         if let token = currentSession?.accessToken {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         } else if requiresAuth {
+            print("[SupabaseClient] No auth token available for authenticated request")
             throw NetworkError.unauthorized
         }
 
         request.httpBody = supabaseRequest.body
+
+        print("[SupabaseClient] Executing \(supabaseRequest.method) \(supabaseRequest.path)")
 
         return try await httpClient.execute(request)
     }
@@ -309,17 +317,20 @@ struct SupabaseRequest: Sendable {
     let method: String
     let body: Data?
     let queryParams: [String: String]?
+    let isUpsert: Bool
 
     init(
         path: String,
         method: String = "GET",
         body: Data? = nil,
-        queryParams: [String: String]? = nil
+        queryParams: [String: String]? = nil,
+        isUpsert: Bool = false
     ) {
         self.path = path
         self.method = method
         self.body = body
         self.queryParams = queryParams
+        self.isUpsert = isUpsert
     }
 }
 

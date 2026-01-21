@@ -5,6 +5,9 @@ import SwiftData
 struct LogbookView: View {
     @Environment(\.premiumService) private var premiumService
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.deleteSessionUseCase) private var deleteSessionUseCase
+    @Environment(\.syncActor) private var syncActor
+    @Environment(\.currentUserId) private var currentUserId
 
     // Query all completed sessions
     @Query(
@@ -16,6 +19,7 @@ struct LogbookView: View {
 
     @State private var isPremium = false
     @State private var showPaywall = false
+    @State private var isSyncing = false
 
     // Cutoff date for free users (30 days ago)
     private var freeTierCutoffDate: Date {
@@ -78,59 +82,78 @@ struct LogbookView: View {
 
     @ViewBuilder
     private var sessionListView: some View {
-        ScrollView {
-            LazyVStack(spacing: SCSpacing.md) {
-                ForEach(visibleSessions) { session in
-                    sessionRow(session)
-                }
-
-                // Show upgrade prompt if there are gated sessions
-                if gatedSessionCount > 0 {
-                    gatedSessionsPrompt
-                }
+        List {
+            ForEach(visibleSessions) { session in
+                sessionRow(session)
+                    .listRowInsets(EdgeInsets(top: SCSpacing.xs, leading: SCSpacing.md, bottom: SCSpacing.xs, trailing: SCSpacing.md))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        Button(role: .destructive) {
+                            deleteSession(session)
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
             }
-            .padding()
+
+            // Show upgrade prompt if there are gated sessions
+            if gatedSessionCount > 0 {
+                gatedSessionsPrompt
+                    .listRowInsets(EdgeInsets(top: SCSpacing.xs, leading: SCSpacing.md, bottom: SCSpacing.xs, trailing: SCSpacing.md))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+            }
+        }
+        .listStyle(.plain)
+        .refreshable {
+            await performManualSync()
         }
     }
 
     @ViewBuilder
     private func sessionRow(_ session: SCSession) -> some View {
-        VStack(alignment: .leading, spacing: SCSpacing.sm) {
-            HStack {
-                if let endedAt = session.endedAt {
-                    Text(endedAt.formatted(date: .abbreviated, time: .shortened))
-                        .font(SCTypography.body)
+        NavigationLink {
+            SessionDetailView(session: session)
+        } label: {
+            VStack(alignment: .leading, spacing: SCSpacing.sm) {
+                HStack {
+                    if let endedAt = session.endedAt {
+                        Text(endedAt.formatted(date: .abbreviated, time: .shortened))
+                            .font(SCTypography.body)
+                    }
+                    Spacer()
+                    if let duration = session.duration {
+                        Text(formatDuration(duration))
+                            .font(SCTypography.secondary)
+                            .foregroundStyle(SCColors.textSecondary)
+                    }
                 }
-                Spacer()
-                if let duration = session.duration {
-                    Text(formatDuration(duration))
+
+                HStack {
+                    Text("\(session.climbs.count) climbs")
                         .font(SCTypography.secondary)
                         .foregroundStyle(SCColors.textSecondary)
+
+                    if let rpe = session.rpe {
+                        Text("RPE: \(rpe)/10")
+                            .font(SCTypography.secondary)
+                            .foregroundStyle(SCColors.textSecondary)
+                    }
                 }
-            }
 
-            HStack {
-                Text("\(session.climbs.count) climbs")
-                    .font(SCTypography.secondary)
-                    .foregroundStyle(SCColors.textSecondary)
-
-                if let rpe = session.rpe {
-                    Text("RPE: \(rpe)/10")
+                if let notes = session.notes, !notes.isEmpty {
+                    Text(notes)
                         .font(SCTypography.secondary)
                         .foregroundStyle(SCColors.textSecondary)
+                        .lineLimit(2)
                 }
             }
-
-            if let notes = session.notes, !notes.isEmpty {
-                Text(notes)
-                    .font(SCTypography.secondary)
-                    .foregroundStyle(SCColors.textSecondary)
-                    .lineLimit(2)
-            }
+            .padding()
+            .background(SCColors.surfaceSecondary)
+            .cornerRadius(SCCornerRadius.card)
         }
-        .padding()
-        .background(SCColors.surfaceSecondary)
-        .cornerRadius(SCCornerRadius.card)
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder
@@ -172,6 +195,32 @@ struct LogbookView: View {
             return "\(hours)h \(minutes)m"
         } else {
             return "\(minutes)m"
+        }
+    }
+
+    private func deleteSession(_ session: SCSession) {
+        guard let useCase = deleteSessionUseCase else { return }
+
+        Task {
+            do {
+                try await useCase.execute(sessionId: session.id)
+            } catch {
+                // Error is handled by the use case; session will be marked for deletion
+                // SwiftData query will automatically remove it from the UI
+            }
+        }
+    }
+
+    private func performManualSync() async {
+        guard let syncActor = syncActor, let userId = currentUserId else { return }
+
+        isSyncing = true
+        defer { isSyncing = false }
+
+        do {
+            try await syncActor.performSync(userId: userId)
+        } catch {
+            print("Manual sync failed: \(error)")
         }
     }
 }

@@ -1,19 +1,50 @@
 import Foundation
+import SwiftData
 
-/// Climb management
+// MARK: - Errors
+
+enum ClimbError: LocalizedError {
+    case sessionNotFound
+    case sessionNotActive
+    case climbNotFound
+    case invalidGrade(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .sessionNotFound:
+            return "Session not found"
+        case .sessionNotActive:
+            return "Cannot add climb to ended session"
+        case .climbNotFound:
+            return "Climb not found"
+        case .invalidGrade(let grade):
+            return "Invalid grade: \(grade)"
+        }
+    }
+}
+
+// MARK: - Protocol
+
 protocol ClimbServiceProtocol: Sendable {
+    /// Create a new climb in a session
+    /// Returns the UUID of the created climb
     func createClimb(
         userId: UUID,
         sessionId: UUID,
         discipline: Discipline,
         isOutdoor: Bool,
         name: String?,
-        grade: Grade?
-    ) async throws -> SCClimb
+        grade: Grade?,
+        openBetaClimbId: String?,
+        openBetaAreaId: String?,
+        locationDisplay: String?
+    ) async throws -> UUID
 
+    /// Update climb properties
     func updateClimb(climbId: UUID, updates: ClimbUpdates) async throws
+
+    /// Soft delete a climb
     func deleteClimb(climbId: UUID) async throws
-    func getClimb(climbId: UUID) async -> SCClimb?
 }
 
 struct ClimbUpdates: Sendable {
@@ -21,32 +52,149 @@ struct ClimbUpdates: Sendable {
     var grade: Grade?
     var notes: String?
     var belayPartnerName: String?
+    var locationDisplay: String?
+
+    init(
+        name: String? = nil,
+        grade: Grade? = nil,
+        notes: String? = nil,
+        belayPartnerName: String? = nil,
+        locationDisplay: String? = nil
+    ) {
+        self.name = name
+        self.grade = grade
+        self.notes = notes
+        self.belayPartnerName = belayPartnerName
+        self.locationDisplay = locationDisplay
+    }
 }
 
-// Stub implementation
-final class ClimbService: ClimbServiceProtocol, @unchecked Sendable {
+// MARK: - Implementation
+
+actor ClimbService: ClimbServiceProtocol {
+    private let modelContainer: ModelContainer
+
+    init(modelContainer: ModelContainer) {
+        self.modelContainer = modelContainer
+    }
+
+    @MainActor
+    private var modelContext: ModelContext {
+        modelContainer.mainContext
+    }
+
     func createClimb(
         userId: UUID,
         sessionId: UUID,
         discipline: Discipline,
         isOutdoor: Bool,
         name: String?,
-        grade: Grade?
-    ) async throws -> SCClimb {
-        // TODO: Implement climb creation
-        fatalError("Not implemented")
+        grade: Grade?,
+        openBetaClimbId: String?,
+        openBetaAreaId: String?,
+        locationDisplay: String?
+    ) async throws -> UUID {
+        try await MainActor.run {
+            // Verify session exists and is active
+            let sessionPredicate = #Predicate<SCSession> { $0.id == sessionId }
+            let sessionDescriptor = FetchDescriptor<SCSession>(predicate: sessionPredicate)
+
+            guard let session = try modelContext.fetch(sessionDescriptor).first else {
+                throw ClimbError.sessionNotFound
+            }
+
+            guard session.endedAt == nil else {
+                throw ClimbError.sessionNotActive
+            }
+
+            // Create climb
+            let climb = SCClimb(
+                userId: userId,
+                sessionId: sessionId,
+                discipline: discipline,
+                isOutdoor: isOutdoor,
+                name: name,
+                gradeOriginal: grade?.original,
+                gradeScale: grade?.scale,
+                gradeScoreMin: grade?.scoreMin,
+                gradeScoreMax: grade?.scoreMax,
+                openBetaClimbId: openBetaClimbId,
+                openBetaAreaId: openBetaAreaId,
+                locationDisplay: locationDisplay,
+                session: session,
+                needsSync: true
+            )
+
+            modelContext.insert(climb)
+            session.climbs.append(climb)
+            session.updatedAt = Date()
+            session.needsSync = true
+
+            try modelContext.save()
+
+            return climb.id
+        }
     }
 
     func updateClimb(climbId: UUID, updates: ClimbUpdates) async throws {
-        // TODO: Implement climb update
+        try await MainActor.run {
+            let predicate = #Predicate<SCClimb> { $0.id == climbId }
+            let descriptor = FetchDescriptor<SCClimb>(predicate: predicate)
+
+            guard let climb = try modelContext.fetch(descriptor).first else {
+                throw ClimbError.climbNotFound
+            }
+
+            // Apply updates
+            if let name = updates.name {
+                climb.name = name
+            }
+            if let grade = updates.grade {
+                climb.gradeOriginal = grade.original
+                climb.gradeScale = grade.scale
+                climb.gradeScoreMin = grade.scoreMin
+                climb.gradeScoreMax = grade.scoreMax
+            }
+            if let notes = updates.notes {
+                climb.notes = notes
+            }
+            if let belayPartner = updates.belayPartnerName {
+                climb.belayPartnerName = belayPartner
+            }
+            if let location = updates.locationDisplay {
+                climb.locationDisplay = location
+            }
+
+            climb.updatedAt = Date()
+            climb.needsSync = true
+
+            try modelContext.save()
+        }
     }
 
     func deleteClimb(climbId: UUID) async throws {
-        // TODO: Implement climb deletion
-    }
+        try await MainActor.run {
+            let predicate = #Predicate<SCClimb> { $0.id == climbId }
+            let descriptor = FetchDescriptor<SCClimb>(predicate: predicate)
 
-    func getClimb(climbId: UUID) async -> SCClimb? {
-        // TODO: Implement climb retrieval
-        return nil
+            guard let climb = try modelContext.fetch(descriptor).first else {
+                throw ClimbError.climbNotFound
+            }
+
+            // Soft delete
+            let now = Date()
+            climb.deletedAt = now
+            climb.updatedAt = now
+            climb.needsSync = true
+
+            // Also soft delete all attempts
+            for attempt in climb.attempts {
+                attempt.deletedAt = now
+                attempt.updatedAt = now
+                attempt.needsSync = true
+            }
+
+            try modelContext.save()
+        }
     }
 }

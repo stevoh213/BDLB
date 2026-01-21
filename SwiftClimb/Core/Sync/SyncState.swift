@@ -23,3 +23,22 @@ struct SyncState: Sendable {
         self.lastError = lastError
     }
 }
+
+// MARK: - UI Helpers
+
+extension SyncState {
+    /// Human-readable status text for displaying sync state in UI.
+    var statusText: String {
+        if isSyncing {
+            return "Syncing..."
+        } else if let error = lastError {
+            return "Sync failed: \(error)"
+        } else if let lastSync = lastSyncAt {
+            let formatter = RelativeDateTimeFormatter()
+            formatter.unitsStyle = .short
+            return "Last synced \(formatter.localizedString(for: lastSync, relativeTo: Date()))"
+        } else {
+            return "Not synced"
+        }
+    }
+}

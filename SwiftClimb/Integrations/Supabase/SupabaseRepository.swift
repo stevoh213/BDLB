@@ -153,22 +153,27 @@ actor SupabaseRepository {
 
         let body = try encoder.encode(values)
 
+        // Note: resolution=merge-duplicates is handled in SupabaseClientActor
+        // via the Prefer header when on_conflict is present
         let request = SupabaseRequest(
             path: "/\(table)",
             method: "POST",
             body: body,
             queryParams: [
                 "on_conflict": onConflict,
-                "resolution": "merge-duplicates",
                 "select": "*"
-            ]
+            ],
+            isUpsert: true
         )
+
+        print("[SupabaseRepository] Upserting to \(table), body size: \(body.count) bytes")
 
         // Supabase returns an array, take first element
         let result: [R] = try await _client.execute(request)
         guard let first = result.first else {
             throw NetworkError.serverError("Upsert returned no data")
         }
+        print("[SupabaseRepository] Upsert to \(table) successful")
         return first
     }
 

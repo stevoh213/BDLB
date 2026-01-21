@@ -61,6 +61,8 @@ import Foundation
 final class SCSession {
     @Attribute(.unique) var id: UUID
     var userId: UUID
+    // Stored as optional for migration compatibility with pre-discipline sessions
+    private var _discipline: Discipline?
     var startedAt: Date
     var endedAt: Date?
     var mentalReadiness: Int?  // 1-5
@@ -79,9 +81,17 @@ final class SCSession {
     // Sync metadata
     var needsSync: Bool
 
+    /// The climbing discipline for this session.
+    /// Defaults to .bouldering for sessions created before discipline was added.
+    var discipline: Discipline {
+        get { _discipline ?? .bouldering }
+        set { _discipline = newValue }
+    }
+
     init(
         id: UUID = UUID(),
         userId: UUID,
+        discipline: Discipline,
         startedAt: Date = Date(),
         endedAt: Date? = nil,
         mentalReadiness: Int? = nil,
@@ -98,6 +108,7 @@ final class SCSession {
     ) {
         self.id = id
         self.userId = userId
+        self._discipline = discipline
         self.startedAt = startedAt
         self.endedAt = endedAt
         self.mentalReadiness = mentalReadiness
@@ -126,5 +137,15 @@ extension SCSession {
 
     var attemptCount: Int {
         return climbs.reduce(0) { $0 + $1.attempts.count }
+    }
+
+    /// Returns the appropriate grade scale for this session's discipline
+    var defaultGradeScale: GradeScale {
+        switch discipline {
+        case .bouldering:
+            return .v
+        case .sport, .trad, .topRope:
+            return .yds
+        }
     }
 }

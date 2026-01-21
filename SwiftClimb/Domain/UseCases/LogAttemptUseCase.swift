@@ -1,18 +1,21 @@
 import Foundation
 
-/// Log an attempt on a climb
+/// Log a climb attempt with auto-inferred send type
 protocol LogAttemptUseCaseProtocol: Sendable {
+    /// Executes the log attempt use case
+    /// - Returns: The ID of the newly created attempt
     func execute(
         userId: UUID,
         sessionId: UUID,
         climbId: UUID,
         outcome: AttemptOutcome,
-        sendType: SendType?
-    ) async throws -> SCAttempt
+        discipline: Discipline,
+        sendTypeOverride: SendType?
+    ) async throws -> UUID
 }
 
-// Stub implementation
-final class LogAttemptUseCase: LogAttemptUseCaseProtocol, @unchecked Sendable {
+/// Implements the log attempt use case with send type inference
+final class LogAttemptUseCase: LogAttemptUseCaseProtocol, Sendable {
     private let attemptService: AttemptServiceProtocol
 
     init(attemptService: AttemptServiceProtocol) {
@@ -24,19 +27,39 @@ final class LogAttemptUseCase: LogAttemptUseCaseProtocol, @unchecked Sendable {
         sessionId: UUID,
         climbId: UUID,
         outcome: AttemptOutcome,
-        sendType: SendType?
-    ) async throws -> SCAttempt {
-        // TODO: Implement use case
-        // 1. Validate climb exists
-        // 2. Calculate attempt number
-        // 3. Create attempt via service (< 100ms target)
-        // 4. Mark for sync
-        return try await attemptService.logAttempt(
+        discipline: Discipline,
+        sendTypeOverride: SendType? = nil
+    ) async throws -> UUID {
+        // Determine send type for successful sends
+        var sendType: SendType? = nil
+
+        if outcome == .send {
+            if let override = sendTypeOverride {
+                // User provided explicit send type
+                sendType = override
+            } else {
+                // Auto-infer based on attempt history:
+                // - First attempt = flash
+                // - Subsequent attempts = redpoint
+                sendType = try await attemptService.inferSendType(
+                    climbId: climbId,
+                    discipline: discipline
+                )
+            }
+        }
+
+        // Log attempt via service (validates and persists locally)
+        let attemptId = try await attemptService.logAttempt(
             userId: userId,
             sessionId: sessionId,
             climbId: climbId,
             outcome: outcome,
             sendType: sendType
         )
+
+        // Attempt is marked needsSync=true by service
+        // SyncActor will pick it up and sync to Supabase in background
+
+        return attemptId
     }
 }

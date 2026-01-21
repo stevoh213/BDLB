@@ -39,6 +39,12 @@ actor HTTPClient {
         }
 
         guard (200..<300).contains(httpResponse.statusCode) else {
+            #if DEBUG
+            print("[HTTPClient] HTTP \(httpResponse.statusCode) for \(request.url?.path ?? "unknown")")
+            if let dataString = String(data: data, encoding: .utf8) {
+                print("[HTTPClient] Error response: \(dataString)")
+            }
+            #endif
             if shouldRetry(statusCode: httpResponse.statusCode) && retryCount < maxRetries {
                 let delay = calculateDelay(retryCount: retryCount)
                 try await Task.sleep(for: .seconds(delay))

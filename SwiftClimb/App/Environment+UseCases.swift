@@ -70,6 +70,45 @@ extension EnvironmentValues {
     }
 }
 
+// MARK: - Get Active Session Use Case
+
+private struct GetActiveSessionUseCaseKey: EnvironmentKey {
+    static let defaultValue: GetActiveSessionUseCaseProtocol? = nil
+}
+
+extension EnvironmentValues {
+    var getActiveSessionUseCase: GetActiveSessionUseCaseProtocol? {
+        get { self[GetActiveSessionUseCaseKey.self] }
+        set { self[GetActiveSessionUseCaseKey.self] = newValue }
+    }
+}
+
+// MARK: - List Sessions Use Case
+
+private struct ListSessionsUseCaseKey: EnvironmentKey {
+    static let defaultValue: ListSessionsUseCaseProtocol? = nil
+}
+
+extension EnvironmentValues {
+    var listSessionsUseCase: ListSessionsUseCaseProtocol? {
+        get { self[ListSessionsUseCaseKey.self] }
+        set { self[ListSessionsUseCaseKey.self] = newValue }
+    }
+}
+
+// MARK: - Delete Session Use Case
+
+private struct DeleteSessionUseCaseKey: EnvironmentKey {
+    static let defaultValue: DeleteSessionUseCaseProtocol? = nil
+}
+
+extension EnvironmentValues {
+    var deleteSessionUseCase: DeleteSessionUseCaseProtocol? {
+        get { self[DeleteSessionUseCaseKey.self] }
+        set { self[DeleteSessionUseCaseKey.self] = newValue }
+    }
+}
+
 // MARK: - Add Climb Use Case
 
 private struct AddClimbUseCaseKey: EnvironmentKey {
@@ -93,6 +132,45 @@ extension EnvironmentValues {
     var logAttemptUseCase: LogAttemptUseCaseProtocol? {
         get { self[LogAttemptUseCaseKey.self] }
         set { self[LogAttemptUseCaseKey.self] = newValue }
+    }
+}
+
+// MARK: - Update Climb Use Case
+
+private struct UpdateClimbUseCaseKey: EnvironmentKey {
+    static let defaultValue: UpdateClimbUseCaseProtocol? = nil
+}
+
+extension EnvironmentValues {
+    var updateClimbUseCase: UpdateClimbUseCaseProtocol? {
+        get { self[UpdateClimbUseCaseKey.self] }
+        set { self[UpdateClimbUseCaseKey.self] = newValue }
+    }
+}
+
+// MARK: - Delete Climb Use Case
+
+private struct DeleteClimbUseCaseKey: EnvironmentKey {
+    static let defaultValue: DeleteClimbUseCaseProtocol? = nil
+}
+
+extension EnvironmentValues {
+    var deleteClimbUseCase: DeleteClimbUseCaseProtocol? {
+        get { self[DeleteClimbUseCaseKey.self] }
+        set { self[DeleteClimbUseCaseKey.self] = newValue }
+    }
+}
+
+// MARK: - Delete Attempt Use Case
+
+private struct DeleteAttemptUseCaseKey: EnvironmentKey {
+    static let defaultValue: DeleteAttemptUseCaseProtocol? = nil
+}
+
+extension EnvironmentValues {
+    var deleteAttemptUseCase: DeleteAttemptUseCaseProtocol? {
+        get { self[DeleteAttemptUseCaseKey.self] }
+        set { self[DeleteAttemptUseCaseKey.self] = newValue }
     }
 }
 
@@ -242,5 +320,18 @@ extension EnvironmentValues {
     var premiumService: PremiumServiceProtocol? {
         get { self[PremiumServiceKey.self] }
         set { self[PremiumServiceKey.self] = newValue }
+    }
+}
+
+// MARK: - Sync Actor
+
+private struct SyncActorKey: EnvironmentKey {
+    static let defaultValue: SyncActor? = nil
+}
+
+extension EnvironmentValues {
+    var syncActor: SyncActor? {
+        get { self[SyncActorKey.self] }
+        set { self[SyncActorKey.self] = newValue }
     }
 }

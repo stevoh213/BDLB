@@ -16,6 +16,7 @@ extension SessionDTO {
         return SCSession(
             id: id,
             userId: userId,
+            discipline: Discipline(rawValue: discipline) ?? .bouldering,
             startedAt: startedAt,
             endedAt: endedAt,
             mentalReadiness: mentalReadiness,
@@ -37,6 +38,7 @@ extension SessionDTO {
         return SessionDTO(
             id: session.id,
             userId: session.userId,
+            discipline: session.discipline.rawValue,
             startedAt: session.startedAt,
             endedAt: session.endedAt,
             mentalReadiness: session.mentalReadiness,

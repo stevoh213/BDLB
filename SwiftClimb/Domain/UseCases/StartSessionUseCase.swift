@@ -2,15 +2,18 @@ import Foundation
 
 /// Start a new climbing session
 protocol StartSessionUseCaseProtocol: Sendable {
+    /// Executes the start session use case
+    /// - Returns: The ID of the newly created session
     func execute(
         userId: UUID,
+        discipline: Discipline,
         mentalReadiness: Int?,
         physicalReadiness: Int?
-    ) async throws -> SCSession
+    ) async throws -> UUID
 }
 
-// Stub implementation
-final class StartSessionUseCase: StartSessionUseCaseProtocol, @unchecked Sendable {
+/// Implements the start session use case with offline-first persistence
+final class StartSessionUseCase: StartSessionUseCaseProtocol, Sendable {
     private let sessionService: SessionServiceProtocol
 
     init(sessionService: SessionServiceProtocol) {
@@ -19,17 +22,21 @@ final class StartSessionUseCase: StartSessionUseCaseProtocol, @unchecked Sendabl
 
     func execute(
         userId: UUID,
+        discipline: Discipline,
         mentalReadiness: Int?,
         physicalReadiness: Int?
-    ) async throws -> SCSession {
-        // TODO: Implement use case
-        // 1. Validate no active session exists
-        // 2. Create session via service
-        // 3. Mark for sync
-        return try await sessionService.createSession(
+    ) async throws -> UUID {
+        // 1. Create session via service (validates and persists locally)
+        let sessionId = try await sessionService.createSession(
             userId: userId,
+            discipline: discipline,
             mentalReadiness: mentalReadiness,
             physicalReadiness: physicalReadiness
         )
+
+        // 2. Session is marked needsSync=true by service
+        // 3. SyncActor will pick it up and sync to Supabase in background
+
+        return sessionId
     }
 }

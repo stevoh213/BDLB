@@ -85,16 +85,24 @@ actor SyncActor {
 
     /// Perform full sync: pull remote updates, then push local changes
     func performSync(userId: UUID) async throws {
-        guard !isSyncing else { return }
+        guard !isSyncing else {
+            print("[SyncActor] Sync already in progress, skipping")
+            return
+        }
         isSyncing = true
         defer { isSyncing = false }
+
+        print("[SyncActor] Starting sync for user: \(userId)")
 
         do {
             try await pullUpdates(userId: userId)
             try await pushPendingChanges(userId: userId)
+            lastSyncAt = Date()
             lastError = nil
+            print("[SyncActor] Sync completed successfully")
         } catch {
             lastError = error.localizedDescription
+            print("[SyncActor] Sync failed with error: \(error)")
             throw error
         }
     }
@@ -166,32 +174,56 @@ actor SyncActor {
         let attemptDescriptor = FetchDescriptor<SCAttempt>(predicate: attemptsPredicate)
         let attemptsToPush = try context.fetch(attemptDescriptor)
 
+        print("[SyncActor] Found \(sessionsToPush.count) sessions, \(climbsToPush.count) climbs, \(attemptsToPush.count) attempts to push")
+
         // Push sessions
         for session in sessionsToPush {
-            let dto = SessionDTO.fromDomain(session)
-            _ = try await sessionsTable.upsertSession(dto)
-            session.needsSync = false
-            session.updatedAt = Date()
+            do {
+                let dto = SessionDTO.fromDomain(session)
+                print("[SyncActor] Pushing session \(session.id) for user \(session.userId)")
+                _ = try await sessionsTable.upsertSession(dto)
+                session.needsSync = false
+                session.updatedAt = Date()
+                print("[SyncActor] Successfully pushed session \(session.id)")
+            } catch {
+                print("[SyncActor] Failed to push session \(session.id): \(error)")
+                throw error
+            }
         }
 
         // Push climbs
         for climb in climbsToPush {
-            let dto = ClimbDTO.fromDomain(climb)
-            _ = try await climbsTable.upsertClimb(dto)
-            climb.needsSync = false
-            climb.updatedAt = Date()
+            do {
+                let dto = ClimbDTO.fromDomain(climb)
+                print("[SyncActor] Pushing climb \(climb.id)")
+                _ = try await climbsTable.upsertClimb(dto)
+                climb.needsSync = false
+                climb.updatedAt = Date()
+                print("[SyncActor] Successfully pushed climb \(climb.id)")
+            } catch {
+                print("[SyncActor] Failed to push climb \(climb.id): \(error)")
+                throw error
+            }
         }
 
         // Push attempts
         for attempt in attemptsToPush {
-            let dto = AttemptDTO.fromDomain(attempt)
-            _ = try await attemptsTable.upsertAttempt(dto)
-            attempt.needsSync = false
-            attempt.updatedAt = Date()
+            do {
+                let dto = AttemptDTO.fromDomain(attempt)
+                print("[SyncActor] Pushing attempt \(attempt.id)")
+                _ = try await attemptsTable.upsertAttempt(dto)
+                attempt.needsSync = false
+                attempt.updatedAt = Date()
+                print("[SyncActor] Successfully pushed attempt \(attempt.id)")
+            } catch {
+                print("[SyncActor] Failed to push attempt \(attempt.id): \(error)")
+                throw error
+            }
         }
 
         // Save changes
         try context.save()
+        print("[SyncActor] Push completed and local changes saved")
     }
 
     /// Enqueue a sync operation (for future use with retry queue)

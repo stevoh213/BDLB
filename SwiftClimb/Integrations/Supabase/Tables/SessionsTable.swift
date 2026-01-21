@@ -50,6 +50,7 @@ actor SessionsTable {
 struct SessionDTO: Codable, Sendable {
     let id: UUID
     let userId: UUID
+    let discipline: String
     let startedAt: Date
     let endedAt: Date?
     let mentalReadiness: Int?
@@ -65,6 +66,7 @@ struct SessionDTO: Codable, Sendable {
     enum CodingKeys: String, CodingKey {
         case id
         case userId = "user_id"
+        case discipline
         case startedAt = "started_at"
         case endedAt = "ended_at"
         case mentalReadiness = "mental_readiness"

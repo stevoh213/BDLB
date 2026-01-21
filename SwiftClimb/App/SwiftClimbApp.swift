@@ -20,8 +20,14 @@ struct SwiftClimbApp: App {
     // Use cases - stubbed implementations
     let startSessionUseCase: StartSessionUseCaseProtocol
     let endSessionUseCase: EndSessionUseCaseProtocol
+    let getActiveSessionUseCase: GetActiveSessionUseCaseProtocol
+    let listSessionsUseCase: ListSessionsUseCaseProtocol
+    let deleteSessionUseCase: DeleteSessionUseCaseProtocol
     let addClimbUseCase: AddClimbUseCaseProtocol
     let logAttemptUseCase: LogAttemptUseCaseProtocol
+    let updateClimbUseCase: UpdateClimbUseCaseProtocol
+    let deleteClimbUseCase: DeleteClimbUseCaseProtocol
+    let deleteAttemptUseCase: DeleteAttemptUseCaseProtocol
     let createPostUseCase: CreatePostUseCaseProtocol
     let toggleFollowUseCase: ToggleFollowUseCaseProtocol
     let searchOpenBetaUseCase: SearchOpenBetaUseCaseProtocol
@@ -37,14 +43,20 @@ struct SwiftClimbApp: App {
     // Premium service - recreated on auth state change
     @State private var premiumService: PremiumServiceProtocol?
 
-    // Store repository for recreating premium service after login
+    // Sync actor - recreated on auth state change
+    @State private var syncActor: SyncActor?
+    @State private var periodicSyncTask: Task<Void, Never>?
+
+    // Store repository and client for recreating services after login
     private let supabaseRepository: SupabaseRepository
+    private let supabaseClient: SupabaseClientActor
 
     init() {
         modelContainer = SwiftDataContainer.shared.container
 
         // Initialize Supabase auth
         let supabaseClient = SupabaseClientActor(config: .shared)
+        self.supabaseClient = supabaseClient
         let repository = SupabaseRepository(client: supabaseClient)
         self.supabaseRepository = repository
         let profilesTable = ProfilesTable(repository: repository)
@@ -54,10 +66,10 @@ struct SwiftClimbApp: App {
         // Initialize table actors
         let followsTable = FollowsTable(repository: repository)
 
-        // Initialize services (stubs)
-        let sessionService = SessionService()
-        let climbService = ClimbService()
-        let attemptService = AttemptService()
+        // Initialize services
+        let sessionService = SessionService(modelContainer: modelContainer)
+        let climbService = ClimbService(modelContainer: modelContainer)
+        let attemptService = AttemptService(modelContainer: modelContainer)
         let socialService = SocialServiceImpl(
             modelContainer: modelContainer,
             followsTable: followsTable,
@@ -82,8 +94,14 @@ struct SwiftClimbApp: App {
         // Initialize use cases with services
         startSessionUseCase = StartSessionUseCase(sessionService: sessionService)
         endSessionUseCase = EndSessionUseCase(sessionService: sessionService)
+        getActiveSessionUseCase = GetActiveSessionUseCase(sessionService: sessionService)
+        listSessionsUseCase = ListSessionsUseCase(sessionService: sessionService)
+        deleteSessionUseCase = DeleteSessionUseCase(sessionService: sessionService)
         addClimbUseCase = AddClimbUseCase(climbService: climbService)
         logAttemptUseCase = LogAttemptUseCase(attemptService: attemptService)
+        updateClimbUseCase = UpdateClimbUseCase(climbService: climbService)
+        deleteClimbUseCase = DeleteClimbUseCase(climbService: climbService)
+        deleteAttemptUseCase = DeleteAttemptUseCase(attemptService: attemptService)
         createPostUseCase = CreatePostUseCase(socialService: socialService)
         toggleFollowUseCase = ToggleFollowUseCase(socialService: socialService)
         searchOpenBetaUseCase = SearchOpenBetaUseCase(premiumService: nil)
@@ -108,24 +126,38 @@ struct SwiftClimbApp: App {
         WindowGroup {
             Group {
                 if isAuthenticated {
-                    ContentView()
-                        .environment(\.authManager, authManager)
-                        .environment(\.currentUserId, currentUserId)
-                        .environment(\.startSessionUseCase, startSessionUseCase)
-                        .environment(\.endSessionUseCase, endSessionUseCase)
-                        .environment(\.addClimbUseCase, addClimbUseCase)
-                        .environment(\.logAttemptUseCase, logAttemptUseCase)
-                        .environment(\.createPostUseCase, createPostUseCase)
-                        .environment(\.toggleFollowUseCase, toggleFollowUseCase)
-                        .environment(\.searchOpenBetaUseCase, searchOpenBetaUseCase)
-                        .environment(\.premiumService, premiumService)
-                        // Profile use cases (Phase 6)
-                        .environment(\.updateProfileUseCase, updateProfileUseCase)
-                        .environment(\.searchProfilesUseCase, searchProfilesUseCase)
-                        .environment(\.fetchProfileUseCase, fetchProfileUseCase)
-                        .environment(\.uploadProfilePhotoUseCase, uploadProfilePhotoUseCase)
-                        .environment(\.getFollowersUseCase, getFollowersUseCase)
-                        .environment(\.getFollowingUseCase, getFollowingUseCase)
+                    ScenePhaseSyncWrapper {
+                        ContentView()
+                    } onForeground: {
+                        Task {
+                            await handleForegroundTransition()
+                        }
+                    }
+                    .environment(\.authManager, authManager)
+                    .environment(\.currentUserId, currentUserId)
+                    .environment(\.startSessionUseCase, startSessionUseCase)
+                    .environment(\.endSessionUseCase, endSessionUseCase)
+                    .environment(\.getActiveSessionUseCase, getActiveSessionUseCase)
+                    .environment(\.listSessionsUseCase, listSessionsUseCase)
+                    .environment(\.deleteSessionUseCase, deleteSessionUseCase)
+                    .environment(\.addClimbUseCase, addClimbUseCase)
+                    .environment(\.logAttemptUseCase, logAttemptUseCase)
+                    .environment(\.updateClimbUseCase, updateClimbUseCase)
+                    .environment(\.deleteClimbUseCase, deleteClimbUseCase)
+                    .environment(\.deleteAttemptUseCase, deleteAttemptUseCase)
+                    .environment(\.createPostUseCase, createPostUseCase)
+                    .environment(\.toggleFollowUseCase, toggleFollowUseCase)
+                    .environment(\.searchOpenBetaUseCase, searchOpenBetaUseCase)
+                    .environment(\.premiumService, premiumService)
+                    // Profile use cases (Phase 6)
+                    .environment(\.updateProfileUseCase, updateProfileUseCase)
+                    .environment(\.searchProfilesUseCase, searchProfilesUseCase)
+                    .environment(\.fetchProfileUseCase, fetchProfileUseCase)
+                    .environment(\.uploadProfilePhotoUseCase, uploadProfilePhotoUseCase)
+                    .environment(\.getFollowersUseCase, getFollowersUseCase)
+                    .environment(\.getFollowingUseCase, getFollowingUseCase)
+                    // Sync actor
+                    .environment(\.syncActor, syncActor)
                 } else {
                     #if DEBUG
                     AuthView(authManager: authManager, onDevBypass: {
@@ -141,6 +173,10 @@ struct SwiftClimbApp: App {
                 // Sync profile to SwiftData after session restore
                 if authManager.isAuthenticated {
                     await syncCurrentUserProfile()
+                    // Initialize sync actor and perform initial sync
+                    initializeSyncActor()
+                    await performInitialSync()
+                    startPeriodicSync()
                 }
             }
             .task(id: premiumService != nil) {
@@ -149,6 +185,18 @@ struct SwiftClimbApp: App {
             }
             .onChange(of: authManager.isAuthenticated) { oldValue, isAuthenticated in
                 updatePremiumService(isAuthenticated: isAuthenticated)
+
+                if isAuthenticated {
+                    // User signed in - initialize sync
+                    initializeSyncActor()
+                    Task {
+                        await performInitialSync()
+                    }
+                    startPeriodicSync()
+                } else {
+                    // User signed out - stop sync
+                    stopSync()
+                }
 
                 // Clear local data when user signs out
                 if oldValue && !isAuthenticated {
@@ -169,6 +217,11 @@ struct SwiftClimbApp: App {
                         await createDevProfile()
                     }
                     updatePremiumService(isAuthenticated: true)
+                    initializeSyncActor()
+                    Task {
+                        await performInitialSync()
+                    }
+                    startPeriodicSync()
                 }
             }
             #endif
@@ -352,6 +405,66 @@ struct SwiftClimbApp: App {
     }
     #endif
 
+    // MARK: - Sync Lifecycle
+
+    @MainActor
+    private func initializeSyncActor() {
+        syncActor = SyncActor(
+            modelContainer: modelContainer,
+            supabaseClient: supabaseClient
+        )
+    }
+
+    @MainActor
+    private func performInitialSync() async {
+        guard let syncActor = syncActor, let userId = currentUserId else { return }
+
+        do {
+            try await syncActor.performSync(userId: userId)
+        } catch {
+            print("Initial sync failed: \(error)")
+        }
+    }
+
+    @MainActor
+    private func startPeriodicSync() {
+        periodicSyncTask?.cancel()
+
+        periodicSyncTask = Task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(300))
+
+                guard !Task.isCancelled else { break }
+
+                if let syncActor = syncActor, let userId = currentUserId {
+                    do {
+                        try await syncActor.performSync(userId: userId)
+                    } catch {
+                        print("Periodic sync failed: \(error)")
+                    }
+                }
+            }
+        }
+    }
+
+    @MainActor
+    private func stopSync() {
+        periodicSyncTask?.cancel()
+        periodicSyncTask = nil
+        syncActor = nil
+    }
+
+    @MainActor
+    private func handleForegroundTransition() async {
+        guard let syncActor = syncActor, let userId = currentUserId else { return }
+
+        do {
+            try await syncActor.performSync(userId: userId)
+        } catch {
+            print("Foreground sync failed: \(error)")
+        }
+    }
+
     // MARK: - Auth Helpers
 
     private var isAuthenticated: Bool {
@@ -370,5 +483,29 @@ struct SwiftClimbApp: App {
         }
         #endif
         return authManager.currentUserId
+    }
+}
+
+// MARK: - Scene Phase Sync Wrapper
+
+/// Wrapper view that observes scenePhase and triggers sync on foreground transition.
+@MainActor
+struct ScenePhaseSyncWrapper<Content: View>: View {
+    @Environment(\.scenePhase) private var scenePhase
+    let content: Content
+    let onForeground: () -> Void
+
+    init(@ViewBuilder content: () -> Content, onForeground: @escaping () -> Void) {
+        self.content = content()
+        self.onForeground = onForeground
+    }
+
+    var body: some View {
+        content
+            .onChange(of: scenePhase) { oldPhase, newPhase in
+                if oldPhase != .active && newPhase == .active {
+                    onForeground()
+                }
+            }
     }
 }

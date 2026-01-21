@@ -16,6 +16,26 @@ enum Discipline: String, Codable, CaseIterable, Sendable {
         case .topRope: return "Top Rope"
         }
     }
+
+    /// Returns available grade scales for this discipline
+    var availableGradeScales: [GradeScale] {
+        switch self {
+        case .bouldering:
+            return [.v]
+        case .sport, .trad, .topRope:
+            return [.yds, .french, .uiaa]
+        }
+    }
+
+    /// Returns the default grade scale for this discipline
+    var defaultGradeScale: GradeScale {
+        switch self {
+        case .bouldering:
+            return .v
+        case .sport, .trad, .topRope:
+            return .yds
+        }
+    }
 }
 
 // MARK: - Grade Scale

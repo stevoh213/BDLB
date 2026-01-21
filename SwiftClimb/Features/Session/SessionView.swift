@@ -84,7 +84,7 @@ struct SessionView: View {
 
     // MARK: - Actions
 
-    private func startNewSession(mentalReadiness: Int?, physicalReadiness: Int?) {
+    private func startNewSession(discipline: Discipline, mentalReadiness: Int?, physicalReadiness: Int?) {
         guard let useCase = startSessionUseCase,
               let userId = currentUserId else {
             errorMessage = "Session service not available"
@@ -97,6 +97,7 @@ struct SessionView: View {
             do {
                 _ = try await useCase.execute(
                     userId: userId,
+                    discipline: discipline,
                     mentalReadiness: mentalReadiness,
                     physicalReadiness: physicalReadiness
                 )

@@ -10,8 +10,8 @@ protocol EndSessionUseCaseProtocol: Sendable {
     ) async throws
 }
 
-// Stub implementation
-final class EndSessionUseCase: EndSessionUseCaseProtocol, @unchecked Sendable {
+/// Implements the end session use case with offline-first persistence
+final class EndSessionUseCase: EndSessionUseCaseProtocol, Sendable {
     private let sessionService: SessionServiceProtocol
 
     init(sessionService: SessionServiceProtocol) {
@@ -24,15 +24,15 @@ final class EndSessionUseCase: EndSessionUseCaseProtocol, @unchecked Sendable {
         pumpLevel: Int?,
         notes: String?
     ) async throws {
-        // TODO: Implement use case
-        // 1. Validate session exists and is active
-        // 2. End session via service
-        // 3. Trigger sync
+        // 1. End session via service (validates and persists locally)
         try await sessionService.endSession(
             sessionId: sessionId,
             rpe: rpe,
             pumpLevel: pumpLevel,
             notes: notes
         )
+
+        // 2. Session is marked needsSync=true by service
+        // 3. SyncActor will pick it up and sync to Supabase in background
     }
 }
