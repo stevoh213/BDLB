@@ -8,6 +8,7 @@ A modern iOS climbing logbook application built with SwiftUI, SwiftData, and Swi
 - **Session Tracking**: Start/end climbing sessions with mental and physical readiness metrics
 - **Climb Logging**: Record climbs with grade, discipline, location, and notes
 - **Attempt Tracking**: Log individual attempts with outcomes, send types, and timestamps
+- **Live Activity**: Real-time session stats on Lock Screen and Dynamic Island (iPhone 14 Pro+)
 - **Offline-First**: All data persists locally with SwiftData, syncs in background when online
 - **Tag System**: Categorize climbs by technique, skill, and wall style with impact indicators
 
@@ -47,6 +48,8 @@ A modern iOS climbing logbook application built with SwiftUI, SwiftData, and Swi
 ✅ Username format validation (3-20 chars, alphanumeric + underscore, starts with letter)
 ✅ Design system with reusable components
 ✅ Tab-based navigation (Session, Logbook, Insights, Feed, Profile)
+✅ Live Activity with Lock Screen and Dynamic Island support
+✅ Deep linking from Live Activity buttons
 ✅ Dev bypass for testing (DEBUG builds only)
 ✅ Keychain token storage
 ✅ Premium subscription system with StoreKit 2
@@ -138,7 +141,7 @@ SwiftClimb/
 │   └── Integrations/
 │       ├── Supabase/                   # Auth + database sync
 │       └── OpenBeta/                   # Outdoor climb search
-└── Documentation/                       # Architecture docs
+└── docs/                                # All documentation
 ```
 
 ### Key Architectural Principles
@@ -149,7 +152,7 @@ SwiftClimb/
 4. **Dependency Injection**: UseCases injected via `@Environment` for testability
 5. **Strict Concurrency**: Swift 6 concurrency checking enabled throughout
 
-See [Documentation/ARCHITECTURE.md](Documentation/ARCHITECTURE.md) for detailed architecture documentation.
+See [docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) for detailed architecture documentation.
 
 ## Configuration
 
@@ -200,9 +203,11 @@ All components support:
 ## Resources
 
 ### Documentation
-- [Architecture Guide](Documentation/ARCHITECTURE.md) - Detailed architecture documentation
-- [Design System](Documentation/DESIGN_SYSTEM.md) - Component library and design tokens
-- [Sync Strategy](Documentation/SYNC_STRATEGY.md) - Offline-first sync implementation
+- [Documentation Index](docs/README.md) - Complete documentation navigation
+- [Architecture Guide](docs/architecture/ARCHITECTURE.md) - Detailed architecture documentation
+- [Design System](docs/architecture/DESIGN_SYSTEM.md) - Component library and design tokens
+- [Sync Strategy](docs/architecture/SYNC_STRATEGY.md) - Offline-first sync implementation
+- [Live Activity](docs/LIVE_ACTIVITY_INDEX.md) - Live Activity implementation and API reference
 - [CLAUDE.md](CLAUDE.md) - AI assistant project context and conventions
 
 ### External Links

@@ -335,3 +335,30 @@ extension EnvironmentValues {
         set { self[SyncActorKey.self] = newValue }
     }
 }
+
+// MARK: - Live Activity Manager
+
+private struct LiveActivityManagerKey: EnvironmentKey {
+    static let defaultValue: LiveActivityManagerProtocol? = nil
+}
+
+extension EnvironmentValues {
+    var liveActivityManager: LiveActivityManagerProtocol? {
+        get { self[LiveActivityManagerKey.self] }
+        set { self[LiveActivityManagerKey.self] = newValue }
+    }
+}
+
+// MARK: - Pending Deep Link
+
+private struct PendingDeepLinkKey: EnvironmentKey {
+    static let defaultValue: Binding<DeepLink?>? = nil
+}
+
+extension EnvironmentValues {
+    /// Binding to a pending deep link that views can observe and clear after handling.
+    var pendingDeepLink: Binding<DeepLink?>? {
+        get { self[PendingDeepLinkKey.self] }
+        set { self[PendingDeepLinkKey.self] = newValue }
+    }
+}

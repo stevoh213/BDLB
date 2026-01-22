@@ -14,6 +14,7 @@ struct ActiveSessionContent: View {
     @Environment(\.deleteClimbUseCase) private var deleteClimbUseCase
     @Environment(\.deleteAttemptUseCase) private var deleteAttemptUseCase
     @Environment(\.currentUserId) private var currentUserId
+    @Environment(\.pendingDeepLink) private var pendingDeepLink
 
     // MARK: - State
     @State private var showAddClimb = false
@@ -30,6 +31,9 @@ struct ActiveSessionContent: View {
     var body: some View {
         ScrollView {
             VStack(spacing: SCSpacing.md) {
+                // Session Details (date, location, type)
+                sessionDetails
+
                 // Session Header
                 sessionHeader
 
@@ -71,6 +75,43 @@ struct ActiveSessionContent: View {
         } message: {
             Text(errorMessage ?? "")
         }
+        .onChange(of: pendingDeepLink?.wrappedValue) { _, deepLink in
+            // Handle deep link to show Add Climb sheet
+            if case .addClimb(let sessionId) = deepLink,
+               sessionId == session.id {
+                showAddClimb = true
+                // Clear the deep link after handling
+                pendingDeepLink?.wrappedValue = nil
+            }
+        }
+    }
+
+    // MARK: - Session Details
+
+    @ViewBuilder
+    private var sessionDetails: some View {
+        HStack(spacing: SCSpacing.lg) {
+            // Date
+            Label {
+                Text(session.startedAt.formatted(date: .abbreviated, time: .omitted))
+                    .font(SCTypography.secondary)
+            } icon: {
+                Image(systemName: "calendar")
+                    .foregroundStyle(.tint)
+            }
+
+            // Discipline/Session Type
+            Label {
+                Text(session.discipline.displayName)
+                    .font(SCTypography.secondary)
+            } icon: {
+                Image(systemName: "figure.climbing")
+                    .foregroundStyle(.tint)
+            }
+
+            Spacer()
+        }
+        .foregroundStyle(SCColors.textSecondary)
     }
 
     @ViewBuilder
@@ -177,7 +218,7 @@ struct ActiveSessionContent: View {
 
     // MARK: - Handler Functions
 
-    private func handleAddClimb(grade: String, scale: GradeScale, name: String?) async throws {
+    private func handleAddClimb(_ data: AddClimbData) async throws {
         guard let useCase = addClimbUseCase,
               let userId = currentUserId else {
             throw NSError(domain: "ActiveSessionContent", code: 1, userInfo: [
@@ -189,9 +230,7 @@ struct ActiveSessionContent: View {
             userId: userId,
             sessionId: session.id,
             discipline: session.discipline,
-            gradeString: grade,
-            gradeScale: scale,
-            name: name,
+            data: data,
             isOutdoor: false,
             openBetaClimbId: nil,
             openBetaAreaId: nil,
@@ -223,7 +262,7 @@ struct ActiveSessionContent: View {
             ])
         }
 
-        try await useCase.execute(climbId: climbId)
+        try await useCase.execute(climbId: climbId, sessionId: session.id)
     }
 
     private func handleLogAttempt(
@@ -255,7 +294,7 @@ struct ActiveSessionContent: View {
             ])
         }
 
-        try await useCase.execute(attemptId: attemptId)
+        try await useCase.execute(attemptId: attemptId, sessionId: session.id)
     }
 }
 

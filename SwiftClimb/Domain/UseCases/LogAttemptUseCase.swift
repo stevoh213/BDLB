@@ -17,9 +17,14 @@ protocol LogAttemptUseCaseProtocol: Sendable {
 /// Implements the log attempt use case with send type inference
 final class LogAttemptUseCase: LogAttemptUseCaseProtocol, Sendable {
     private let attemptService: AttemptServiceProtocol
+    private let liveActivityManager: LiveActivityManagerProtocol?
 
-    init(attemptService: AttemptServiceProtocol) {
+    init(
+        attemptService: AttemptServiceProtocol,
+        liveActivityManager: LiveActivityManagerProtocol? = nil
+    ) {
         self.attemptService = attemptService
+        self.liveActivityManager = liveActivityManager
     }
 
     func execute(
@@ -59,6 +64,9 @@ final class LogAttemptUseCase: LogAttemptUseCaseProtocol, Sendable {
 
         // Attempt is marked needsSync=true by service
         // SyncActor will pick it up and sync to Supabase in background
+
+        // Update Live Activity with incremented attempt count
+        await liveActivityManager?.incrementAttemptCount(sessionId: sessionId)
 
         return attemptId
     }

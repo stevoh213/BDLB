@@ -2,7 +2,9 @@
 
 **Agent**: The Scribe (Agent 4)
 **Date**: 2026-01-18
-**Status**: Complete
+**Status**: Complete (Historical - paths updated 2026-01-20)
+
+> **Note**: This document is a historical record. Documentation has been reorganized into `docs/` directory structure. See [docs/README.md](../README.md) for current documentation navigation.
 
 ---
 

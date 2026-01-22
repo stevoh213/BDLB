@@ -25,6 +25,12 @@ enum ClimbError: LocalizedError {
 
 // MARK: - Protocol
 
+/// Counts of climbs and attempts for a session (used for Live Activity updates)
+struct SessionCounts: Sendable {
+    let climbCount: Int
+    let attemptCount: Int
+}
+
 protocol ClimbServiceProtocol: Sendable {
     /// Create a new climb in a session
     /// Returns the UUID of the created climb
@@ -37,7 +43,8 @@ protocol ClimbServiceProtocol: Sendable {
         grade: Grade?,
         openBetaClimbId: String?,
         openBetaAreaId: String?,
-        locationDisplay: String?
+        locationDisplay: String?,
+        notes: String?
     ) async throws -> UUID
 
     /// Update climb properties
@@ -45,6 +52,9 @@ protocol ClimbServiceProtocol: Sendable {
 
     /// Soft delete a climb
     func deleteClimb(climbId: UUID) async throws
+
+    /// Get current climb and attempt counts for a session
+    func getSessionCounts(sessionId: UUID) async throws -> SessionCounts
 }
 
 struct ClimbUpdates: Sendable {
@@ -92,7 +102,8 @@ actor ClimbService: ClimbServiceProtocol {
         grade: Grade?,
         openBetaClimbId: String?,
         openBetaAreaId: String?,
-        locationDisplay: String?
+        locationDisplay: String?,
+        notes: String?
     ) async throws -> UUID {
         try await MainActor.run {
             // Verify session exists and is active
@@ -121,6 +132,7 @@ actor ClimbService: ClimbServiceProtocol {
                 openBetaClimbId: openBetaClimbId,
                 openBetaAreaId: openBetaAreaId,
                 locationDisplay: locationDisplay,
+                notes: notes,
                 session: session,
                 needsSync: true
             )
@@ -195,6 +207,29 @@ actor ClimbService: ClimbServiceProtocol {
             }
 
             try modelContext.save()
+        }
+    }
+
+    func getSessionCounts(sessionId: UUID) async throws -> SessionCounts {
+        try await MainActor.run {
+            let sessionPredicate = #Predicate<SCSession> { $0.id == sessionId }
+            let sessionDescriptor = FetchDescriptor<SCSession>(predicate: sessionPredicate)
+
+            guard let session = try modelContext.fetch(sessionDescriptor).first else {
+                throw ClimbError.sessionNotFound
+            }
+
+            // Count non-deleted climbs
+            let climbCount = session.climbs.filter { $0.deletedAt == nil }.count
+
+            // Count non-deleted attempts across all non-deleted climbs
+            let attemptCount = session.climbs
+                .filter { $0.deletedAt == nil }
+                .flatMap { $0.attempts }
+                .filter { $0.deletedAt == nil }
+                .count
+
+            return SessionCounts(climbCount: climbCount, attemptCount: attemptCount)
         }
     }
 }

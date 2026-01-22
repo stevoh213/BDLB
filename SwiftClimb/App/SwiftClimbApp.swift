@@ -17,6 +17,12 @@ struct SwiftClimbApp: App {
     // Authentication
     @State private var authManager: SupabaseAuthManager
 
+    // Live Activity Manager
+    let liveActivityManager: LiveActivityManagerProtocol
+
+    // Deep link handling
+    @State private var pendingDeepLink: DeepLink?
+
     // Use cases - stubbed implementations
     let startSessionUseCase: StartSessionUseCaseProtocol
     let endSessionUseCase: EndSessionUseCaseProtocol
@@ -66,6 +72,10 @@ struct SwiftClimbApp: App {
         // Initialize table actors
         let followsTable = FollowsTable(repository: repository)
 
+        // Initialize Live Activity Manager
+        let liveActivityMgr = LiveActivityManager()
+        self.liveActivityManager = liveActivityMgr
+
         // Initialize services
         let sessionService = SessionService(modelContainer: modelContainer)
         let climbService = ClimbService(modelContainer: modelContainer)
@@ -91,17 +101,36 @@ struct SwiftClimbApp: App {
         // Premium service starts nil, created after authentication
         self._premiumService = State(initialValue: nil)
 
-        // Initialize use cases with services
-        startSessionUseCase = StartSessionUseCase(sessionService: sessionService)
-        endSessionUseCase = EndSessionUseCase(sessionService: sessionService)
+        // Initialize use cases with services and Live Activity Manager
+        startSessionUseCase = StartSessionUseCase(
+            sessionService: sessionService,
+            liveActivityManager: liveActivityMgr
+        )
+        endSessionUseCase = EndSessionUseCase(
+            sessionService: sessionService,
+            liveActivityManager: liveActivityMgr
+        )
         getActiveSessionUseCase = GetActiveSessionUseCase(sessionService: sessionService)
         listSessionsUseCase = ListSessionsUseCase(sessionService: sessionService)
         deleteSessionUseCase = DeleteSessionUseCase(sessionService: sessionService)
-        addClimbUseCase = AddClimbUseCase(climbService: climbService)
-        logAttemptUseCase = LogAttemptUseCase(attemptService: attemptService)
+        addClimbUseCase = AddClimbUseCase(
+            climbService: climbService,
+            attemptService: attemptService,
+            liveActivityManager: liveActivityMgr
+        )
+        logAttemptUseCase = LogAttemptUseCase(
+            attemptService: attemptService,
+            liveActivityManager: liveActivityMgr
+        )
         updateClimbUseCase = UpdateClimbUseCase(climbService: climbService)
-        deleteClimbUseCase = DeleteClimbUseCase(climbService: climbService)
-        deleteAttemptUseCase = DeleteAttemptUseCase(attemptService: attemptService)
+        deleteClimbUseCase = DeleteClimbUseCase(
+            climbService: climbService,
+            liveActivityManager: liveActivityMgr
+        )
+        deleteAttemptUseCase = DeleteAttemptUseCase(
+            attemptService: attemptService,
+            liveActivityManager: liveActivityMgr
+        )
         createPostUseCase = CreatePostUseCase(socialService: socialService)
         toggleFollowUseCase = ToggleFollowUseCase(socialService: socialService)
         searchOpenBetaUseCase = SearchOpenBetaUseCase(premiumService: nil)
@@ -158,6 +187,10 @@ struct SwiftClimbApp: App {
                     .environment(\.getFollowingUseCase, getFollowingUseCase)
                     // Sync actor
                     .environment(\.syncActor, syncActor)
+                    // Live Activity Manager
+                    .environment(\.liveActivityManager, liveActivityManager)
+                    // Deep link handling
+                    .environment(\.pendingDeepLink, $pendingDeepLink)
                 } else {
                     #if DEBUG
                     AuthView(authManager: authManager, onDevBypass: {
@@ -167,6 +200,10 @@ struct SwiftClimbApp: App {
                     AuthView(authManager: authManager)
                     #endif
                 }
+            }
+            .onOpenURL { url in
+                // Handle deep links from Live Activity and other sources
+                pendingDeepLink = DeepLink(url: url)
             }
             .task {
                 await authManager.loadSession()

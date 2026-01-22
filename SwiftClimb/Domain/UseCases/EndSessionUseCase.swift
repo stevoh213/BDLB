@@ -13,9 +13,14 @@ protocol EndSessionUseCaseProtocol: Sendable {
 /// Implements the end session use case with offline-first persistence
 final class EndSessionUseCase: EndSessionUseCaseProtocol, Sendable {
     private let sessionService: SessionServiceProtocol
+    private let liveActivityManager: LiveActivityManagerProtocol?
 
-    init(sessionService: SessionServiceProtocol) {
+    init(
+        sessionService: SessionServiceProtocol,
+        liveActivityManager: LiveActivityManagerProtocol? = nil
+    ) {
         self.sessionService = sessionService
+        self.liveActivityManager = liveActivityManager
     }
 
     func execute(
@@ -34,5 +39,8 @@ final class EndSessionUseCase: EndSessionUseCaseProtocol, Sendable {
 
         // 2. Session is marked needsSync=true by service
         // 3. SyncActor will pick it up and sync to Supabase in background
+
+        // 4. End Live Activity
+        await liveActivityManager?.endActivity(sessionId: sessionId)
     }
 }

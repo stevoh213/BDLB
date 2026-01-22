@@ -28,7 +28,20 @@ INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationLandscape
 INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = UIInterfaceOrientationLandscapeRight UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown
 
 // ==========================================
+// Live Activities Support
+// ==========================================
+INFOPLIST_KEY_NSSupportsLiveActivities = YES
+
+// ==========================================
 // Entitlements
 // ==========================================
 // AI agents can modify Config/SwiftClimb.entitlements to add capabilities
 CODE_SIGN_ENTITLEMENTS = Config/SwiftClimb.entitlements
+
+// ==========================================
+// URL Schemes (for Deep Links)
+// ==========================================
+// NOTE: URL schemes need to be configured in Xcode target settings:
+// 1. Select target > Info tab > URL Types
+// 2. Add URL scheme: "swiftclimb"
+// 3. Identifier: "com.swiftclimb"

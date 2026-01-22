@@ -13,11 +13,22 @@
 		781F17ED2F1EBDC800848A7C /* Realtime in Frameworks */ = {isa = PBXBuildFile; productRef = 781F17EC2F1EBDC800848A7C /* Realtime */; };
 		781F17EF2F1EBDC800848A7C /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = 781F17EE2F1EBDC800848A7C /* Storage */; };
 		781F17F12F1EBDC800848A7C /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 781F17F02F1EBDC800848A7C /* Supabase */; };
+		7893438D2F22986C007DFF23 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7893438C2F22986C007DFF23 /* WidgetKit.framework */; };
+		7893438F2F22986C007DFF23 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7893438E2F22986C007DFF23 /* SwiftUI.framework */; };
+		789343A02F229870007DFF23 /* SwiftClimbWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7893438B2F22986C007DFF23 /* SwiftClimbWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		8B41F6832DEDD23B001A66F9 /* SwiftClimbFeature in Frameworks */ = {isa = PBXBuildFile; productRef = 8B41F6822DEDD23B001A66F9 /* SwiftClimbFeature */; };
 		8B41F6852DEDD25C001A66F9 /* SwiftClimbFeature in Frameworks */ = {isa = PBXBuildFile; productRef = 8B41F6842DEDD25C001A66F9 /* SwiftClimbFeature */; };
+		789343B22F22A000007DFF23 /* SwiftClimbFeature in Frameworks */ = {isa = PBXBuildFile; productRef = 789343B12F22A000007DFF23 /* SwiftClimbFeature */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		7893439E2F229870007DFF23 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8B41F63D2DEDD0D5001A66F9 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7893438A2F22986C007DFF23;
+			remoteInfo = SwiftClimbWidgetsExtension;
+		};
 		8B41F65D2DEDD0D6001A66F9 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 8B41F63D2DEDD0D5001A66F9 /* Project object */;
@@ -27,12 +38,43 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		789343A52F229870007DFF23 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				789343A02F229870007DFF23 /* SwiftClimbWidgetsExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		7893438B2F22986C007DFF23 /* SwiftClimbWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SwiftClimbWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		7893438C2F22986C007DFF23 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		7893438E2F22986C007DFF23 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		8B41F6452DEDD0D5001A66F9 /* SwiftClimb.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SwiftClimb.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8B41F65C2DEDD0D6001A66F9 /* SwiftClimb.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SwiftClimb.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		789343A42F229870007DFF23 /* Exceptions for "SwiftClimbWidgets" folder in "SwiftClimbWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 7893438A2F22986C007DFF23 /* SwiftClimbWidgetsExtension */;
+		};
+		789343B02F22997A007DFF23 /* Exceptions for "SwiftClimb" folder in "SwiftClimb" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 8B41F6442DEDD0D5001A66F9 /* SwiftClimb */;
+		};
 		8BD71C0A2DEE41E000CEDD92 /* Exceptions for "Config" folder in "SwiftClimb" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -46,8 +88,19 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		789343902F22986C007DFF23 /* SwiftClimbWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				789343A42F229870007DFF23 /* Exceptions for "SwiftClimbWidgets" folder in "SwiftClimbWidgetsExtension" target */,
+			);
+			path = SwiftClimbWidgets;
+			sourceTree = "<group>";
+		};
 		8B41F6472DEDD0D5001A66F9 /* SwiftClimb */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				789343B02F22997A007DFF23 /* Exceptions for "SwiftClimb" folder in "SwiftClimb" target */,
+			);
 			path = SwiftClimb;
 			sourceTree = "<group>";
 		};
@@ -67,6 +120,16 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		789343882F22986C007DFF23 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7893438F2F22986C007DFF23 /* SwiftUI.framework in Frameworks */,
+				7893438D2F22986C007DFF23 /* WidgetKit.framework in Frameworks */,
+				789343B22F22A000007DFF23 /* SwiftClimbFeature in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		8B41F6422DEDD0D5001A66F9 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -98,6 +161,7 @@
 				8BD71C052DEE41D800CEDD92 /* Config */,
 				8B41F6472DEDD0D5001A66F9 /* SwiftClimb */,
 				8B41F65F2DEDD0D6001A66F9 /* SwiftClimbUITests */,
+				789343902F22986C007DFF23 /* SwiftClimbWidgets */,
 				8B41F6812DEDD23B001A66F9 /* Frameworks */,
 				8B41F6462DEDD0D5001A66F9 /* Products */,
 			);
@@ -108,6 +172,7 @@
 			children = (
 				8B41F6452DEDD0D5001A66F9 /* SwiftClimb.app */,
 				8B41F65C2DEDD0D6001A66F9 /* SwiftClimb.xctest */,
+				7893438B2F22986C007DFF23 /* SwiftClimbWidgetsExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -115,6 +180,8 @@
 		8B41F6812DEDD23B001A66F9 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				7893438C2F22986C007DFF23 /* WidgetKit.framework */,
+				7893438E2F22986C007DFF23 /* SwiftUI.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -122,6 +189,29 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		7893438A2F22986C007DFF23 /* SwiftClimbWidgetsExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 789343A12F229870007DFF23 /* Build configuration list for PBXNativeTarget "SwiftClimbWidgetsExtension" */;
+			buildPhases = (
+				789343872F22986C007DFF23 /* Sources */,
+				789343882F22986C007DFF23 /* Frameworks */,
+				789343892F22986C007DFF23 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				789343902F22986C007DFF23 /* SwiftClimbWidgets */,
+			);
+			name = SwiftClimbWidgetsExtension;
+			packageProductDependencies = (
+				789343B12F22A000007DFF23 /* SwiftClimbFeature */,
+			);
+			productName = SwiftClimbWidgetsExtension;
+			productReference = 7893438B2F22986C007DFF23 /* SwiftClimbWidgetsExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		8B41F6442DEDD0D5001A66F9 /* SwiftClimb */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 8B41F6662DEDD0D6001A66F9 /* Build configuration list for PBXNativeTarget "SwiftClimb" */;
@@ -129,10 +219,12 @@
 				8B41F6412DEDD0D5001A66F9 /* Sources */,
 				8B41F6422DEDD0D5001A66F9 /* Frameworks */,
 				8B41F6432DEDD0D5001A66F9 /* Resources */,
+				789343A52F229870007DFF23 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				7893439F2F229870007DFF23 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				8B41F6472DEDD0D5001A66F9 /* SwiftClimb */,
@@ -183,9 +275,12 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1630;
+				LastSwiftUpdateCheck = 2620;
 				LastUpgradeCheck = 1630;
 				TargetAttributes = {
+					7893438A2F22986C007DFF23 = {
+						CreatedOnToolsVersion = 26.2;
+					};
 					8B41F6442DEDD0D5001A66F9 = {
 						CreatedOnToolsVersion = 16.3;
 					};
@@ -214,11 +309,19 @@
 			targets = (
 				8B41F6442DEDD0D5001A66F9 /* SwiftClimb */,
 				8B41F65B2DEDD0D6001A66F9 /* SwiftClimbUITests */,
+				7893438A2F22986C007DFF23 /* SwiftClimbWidgetsExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		789343892F22986C007DFF23 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		8B41F6432DEDD0D5001A66F9 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -236,6 +339,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		789343872F22986C007DFF23 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		8B41F6412DEDD0D5001A66F9 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -253,6 +363,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		7893439F2F229870007DFF23 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7893438A2F22986C007DFF23 /* SwiftClimbWidgetsExtension */;
+			targetProxy = 7893439E2F229870007DFF23 /* PBXContainerItemProxy */;
+		};
 		8B41F65E2DEDD0D6001A66F9 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 8B41F6442DEDD0D5001A66F9 /* SwiftClimb */;
@@ -261,6 +376,68 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		789343A22F229870007DFF23 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 648N8KXW92;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SwiftClimbWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = SwiftClimbWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bdlb.app.SwiftClimbWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		789343A32F229870007DFF23 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 648N8KXW92;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SwiftClimbWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = SwiftClimbWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bdlb.app.SwiftClimbWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		8B41F6642DEDD0D6001A66F9 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -393,6 +570,7 @@
 				DEVELOPMENT_TEAM = 648N8KXW92;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SwiftClimb/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = SwiftClimb;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -421,6 +599,7 @@
 				DEVELOPMENT_TEAM = 648N8KXW92;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SwiftClimb/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = SwiftClimb;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -444,6 +623,7 @@
 			baseConfigurationReferenceRelativePath = Tests.xcconfig;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 648N8KXW92;
 				GENERATE_INFOPLIST_FILE = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -458,6 +638,7 @@
 			baseConfigurationReferenceRelativePath = Tests.xcconfig;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 648N8KXW92;
 				GENERATE_INFOPLIST_FILE = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -469,6 +650,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		789343A12F229870007DFF23 /* Build configuration list for PBXNativeTarget "SwiftClimbWidgetsExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				789343A22F229870007DFF23 /* Debug */,
+				789343A32F229870007DFF23 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		8B41F6402DEDD0D5001A66F9 /* Build configuration list for PBXProject "SwiftClimb" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -545,6 +735,10 @@
 			productName = SwiftClimbFeature;
 		};
 		8B41F6842DEDD25C001A66F9 /* SwiftClimbFeature */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SwiftClimbFeature;
+		};
+		789343B12F22A000007DFF23 /* SwiftClimbFeature */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SwiftClimbFeature;
 		};

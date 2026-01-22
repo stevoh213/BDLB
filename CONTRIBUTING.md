@@ -659,9 +659,12 @@ Reviewers should check:
 
 If you're unsure about any convention or pattern:
 1. Check existing code for examples
-2. Review architecture decision records in `SPECS/ADR/`
+2. Review architecture decision records in `docs/architecture/adr/`
 3. Ask in pull request comments
-4. Refer to [ARCHITECTURE.md](./Documentation/ARCHITECTURE.md) for system design
+4. Refer to [ARCHITECTURE.md](./docs/architecture/ARCHITECTURE.md) for system design
+5. Review feature-specific guides:
+   - [Live Activity Implementation](./docs/LIVE_ACTIVITY_INDEX.md) - For Live Activity features
+   - [Adding Live Activities Guide](./docs/guides/ADDING_LIVE_ACTIVITIES.md) - Step-by-step guide
 
 ---
 

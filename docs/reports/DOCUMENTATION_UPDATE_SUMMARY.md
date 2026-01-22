@@ -1,4 +1,6 @@
 # Documentation Update Summary
+> **Note**: This document is a historical record from the implementation phase. File paths may reference old locations. See [docs/README.md](../README.md) for current documentation.
+
 
 **Date**: 2026-01-19
 **Updated By**: Agent 4 (The Scribe)

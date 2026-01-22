@@ -38,6 +38,14 @@ struct ClimbDetailSheet: View {
                     }
                 }
 
+                // TODO: [Climb Characteristics] - Add characteristics display and editing section
+                // - Display wall style tags with impact indicators (helped/hindered/neutral)
+                // - Display technique tags with impact indicators
+                // - Display skill tags with impact indicators
+                // - In edit mode, allow adding/removing tags and changing impact ratings
+                // - Use chip/badge UI pattern for compact tag display
+                // - Consider grouping by category (e.g., "Wall Features", "Techniques", "Skills")
+
                 // Attempts Section
                 Section("Attempts (\(sortedAttempts.count))") {
                     if sortedAttempts.isEmpty {
