@@ -1,21 +1,40 @@
 import SwiftUI
 
-/// Full edit sheet for climb details and attempt history
+/// Full edit sheet for climb details - matches AddClimbSheet UI/UX for consistency.
+///
+/// This view provides the same form structure as AddClimbSheet to ensure users
+/// have a consistent experience when adding vs editing climbs. Additional sections
+/// for attempt history and delete are added since they're specific to editing.
 struct ClimbDetailSheet: View {
     @Bindable var climb: SCClimb
     let session: SCSession
-    let onUpdate: (ClimbUpdates) async throws -> Void
+    let onUpdate: (ClimbEditData) async throws -> Void
     let onDelete: () async throws -> Void
     let onLogAttempt: (AttemptOutcome, SendType?) async throws -> Void
     let onDeleteAttempt: (UUID) async throws -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.tagService) private var tagService
 
+    // MARK: - Basic Info State
     @State private var editedName: String = ""
     @State private var editedGrade: String = ""
     @State private var editedScale: GradeScale = .v
+
+    // MARK: - Attempts & Outcome State
+    @State private var outcome: ClimbOutcome = .project
+    @State private var tickType: SendType = .flash
+    @State private var showTickTypeOverride = false
+
+    // MARK: - Tag State
+    @State private var holdTypeSelections: [TagSelection] = []
+    @State private var skillSelections: [TagSelection] = []
+    @State private var isLoadingTags = true
+
+    // MARK: - Notes State
     @State private var editedNotes: String = ""
-    @State private var isEditing = false
+
+    // MARK: - UI State
     @State private var isLoading = false
     @State private var showDeleteConfirmation = false
     @State private var errorMessage: String?
@@ -26,67 +45,38 @@ struct ClimbDetailSheet: View {
             .sorted { $0.attemptNumber < $1.attemptNumber }
     }
 
+    /// Auto-inferred tick type based on discipline and attempt count.
+    private var inferredTickType: SendType {
+        SendType.inferred(for: session.discipline, attemptCount: sortedAttempts.count)
+    }
+
+    /// Available tick types for the current discipline.
+    private var availableTickTypes: [SendType] {
+        SendType.availableTypes(for: session.discipline)
+    }
+
     var body: some View {
         NavigationStack {
-            List {
-                // Climb Info Section
-                Section("Climb Details") {
-                    if isEditing {
-                        editingContent
-                    } else {
-                        displayContent
-                    }
-                }
-
-                // TODO: [Climb Characteristics] - Add characteristics display and editing section
-                // - Display wall style tags with impact indicators (helped/hindered/neutral)
-                // - Display technique tags with impact indicators
-                // - Display skill tags with impact indicators
-                // - In edit mode, allow adding/removing tags and changing impact ratings
-                // - Use chip/badge UI pattern for compact tag display
-                // - Consider grouping by category (e.g., "Wall Features", "Techniques", "Skills")
-
-                // Attempts Section
-                Section("Attempts (\(sortedAttempts.count))") {
-                    if sortedAttempts.isEmpty {
-                        Text("No attempts yet")
-                            .foregroundStyle(SCColors.textSecondary)
-                    } else {
-                        ForEach(sortedAttempts) { attempt in
-                            AttemptRow(attempt: attempt)
-                        }
-                        .onDelete(perform: deleteAttempts)
-                    }
-
-                    // Add attempt inline
-                    AttemptLogButtons(
-                        climb: climb,
-                        onLogAttempt: onLogAttempt
-                    )
-                }
-
-                // Delete Section
-                Section {
-                    Button("Delete Climb", role: .destructive) {
-                        showDeleteConfirmation = true
-                    }
-                }
+            Form {
+                basicInfoSection
+                attemptsOutcomeSection
+                tagsSection
+                notesSection
+                attemptHistorySection
+                deleteSection
             }
-            .navigationTitle(climb.name ?? climb.gradeOriginal ?? "Climb")
+            .navigationTitle(climb.name ?? climb.gradeOriginal ?? "Edit Climb")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Done") { dismiss() }
+                    Button("Cancel") { dismiss() }
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(isEditing ? "Save" : "Edit") {
-                        if isEditing {
-                            Task { await saveChanges() }
-                        } else {
-                            startEditing()
-                        }
+                    Button("Save") {
+                        Task { await saveChanges() }
                     }
+                    .fontWeight(.semibold)
                     .disabled(isLoading)
                 }
             }
@@ -106,62 +96,241 @@ struct ClimbDetailSheet: View {
             } message: {
                 Text(errorMessage ?? "")
             }
+            .confirmationDialog(
+                "Tick Type",
+                isPresented: $showTickTypeOverride,
+                titleVisibility: .visible
+            ) {
+                tickTypeOverrideOptions
+            } message: {
+                Text("Auto-detected as \(inferredTickType.displayName). Change?")
+            }
+        }
+        .task {
+            await loadTags()
+        }
+        .onAppear {
+            setupInitialValues()
         }
     }
 
-    // MARK: - Display Content
+    // MARK: - Basic Info Section
 
     @ViewBuilder
-    private var displayContent: some View {
-        LabeledContent("Grade", value: climb.gradeOriginal ?? "Unknown")
+    private var basicInfoSection: some View {
+        Section {
+            TextField("Route Name", text: $editedName)
 
-        if let name = climb.name, !name.isEmpty {
-            LabeledContent("Name", value: name)
+            GradePicker(
+                discipline: session.discipline,
+                selectedGrade: $editedGrade,
+                selectedScale: $editedScale
+            )
+        } header: {
+            Text("Basic Info")
         }
+    }
 
-        LabeledContent("Discipline", value: climb.discipline.displayName)
+    // MARK: - Attempts & Outcome Section
 
-        if climb.hasSend {
-            LabeledContent("Status") {
-                Label("Sent", systemImage: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
-            }
-        }
-
-        if let notes = climb.notes, !notes.isEmpty {
-            VStack(alignment: .leading, spacing: SCSpacing.xs) {
-                Text("Notes")
-                    .font(SCTypography.metadata)
+    @ViewBuilder
+    private var attemptsOutcomeSection: some View {
+        Section {
+            // Attempt count (read-only - managed via attempt history)
+            HStack {
+                Text("Attempts")
+                Spacer()
+                Text("\(sortedAttempts.count)")
                     .foregroundStyle(SCColors.textSecondary)
-                Text(notes)
+                    .monospacedDigit()
+            }
+
+            // Outcome picker
+            Picker("Outcome", selection: $outcome) {
+                ForEach(ClimbOutcome.allCases, id: \.self) { outcome in
+                    Label(outcome.displayName, systemImage: outcome.systemImage)
+                        .tag(outcome)
+                }
+            }
+
+            // Tick type (only shown for sends)
+            if outcome == .send {
+                HStack {
+                    Text("Tick Type")
+                    Spacer()
+                    Button {
+                        showTickTypeOverride = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(tickType.displayName)
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.caption2)
+                        }
+                        .foregroundStyle(.tint)
+                    }
+                }
+            }
+        } header: {
+            Text("Attempts & Outcome")
+        } footer: {
+            if outcome == .send {
+                Text("Tick type auto-detected: \(inferredTickType.displayName) (\(inferredTickType.description))")
+            } else {
+                Text("Mark as Project if you're still working on this climb")
             }
         }
     }
 
-    // MARK: - Editing Content
+    // MARK: - Tags Section
 
     @ViewBuilder
-    private var editingContent: some View {
-        TextField("Name", text: $editedName)
+    private var tagsSection: some View {
+        Section {
+            if isLoadingTags {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+            } else {
+                VStack(alignment: .leading, spacing: SCSpacing.lg) {
+                    TagSelectionGrid(
+                        title: "Hold Types",
+                        selections: $holdTypeSelections
+                    )
 
-        GradePicker(
-            discipline: session.discipline,
-            selectedGrade: $editedGrade,
-            selectedScale: $editedScale
-        )
+                    TagSelectionGrid(
+                        title: "Skills",
+                        selections: $skillSelections
+                    )
+                }
+            }
+        } header: {
+            Text("Tags")
+        } footer: {
+            Text("Tap to mark as helped (green) or hindered (red). Tap again to deselect.")
+        }
+    }
 
-        TextField("Notes", text: $editedNotes, axis: .vertical)
-            .lineLimit(3...6)
+    // MARK: - Notes Section
+
+    @ViewBuilder
+    private var notesSection: some View {
+        Section {
+            TextField("Add notes about this climb...", text: $editedNotes, axis: .vertical)
+                .lineLimit(3...6)
+        } header: {
+            Text("Notes")
+        }
+    }
+
+    // MARK: - Attempt History Section
+
+    @ViewBuilder
+    private var attemptHistorySection: some View {
+        Section {
+            if sortedAttempts.isEmpty {
+                Text("No attempts yet")
+                    .foregroundStyle(SCColors.textSecondary)
+            } else {
+                ForEach(sortedAttempts) { attempt in
+                    AttemptRow(attempt: attempt)
+                }
+                .onDelete(perform: deleteAttempts)
+            }
+
+            // Add attempt inline
+            AttemptLogButtons(
+                climb: climb,
+                onLogAttempt: onLogAttempt
+            )
+        } header: {
+            Text("Attempt History (\(sortedAttempts.count))")
+        }
+    }
+
+    // MARK: - Delete Section
+
+    @ViewBuilder
+    private var deleteSection: some View {
+        Section {
+            Button("Delete Climb", role: .destructive) {
+                showDeleteConfirmation = true
+            }
+        }
+    }
+
+    // MARK: - Tick Type Override Options
+
+    @ViewBuilder
+    private var tickTypeOverrideOptions: some View {
+        Button("Keep as \(inferredTickType.displayName)") {
+            tickType = inferredTickType
+        }
+
+        ForEach(availableTickTypes.filter { $0 != inferredTickType }, id: \.self) { type in
+            Button("Change to \(type.displayName)") {
+                tickType = type
+            }
+        }
+
+        Button("Cancel", role: .cancel) {}
     }
 
     // MARK: - Helper Methods
 
-    private func startEditing() {
+    private func setupInitialValues() {
         editedName = climb.name ?? ""
         editedGrade = climb.gradeOriginal ?? ""
         editedScale = climb.gradeScale ?? session.discipline.defaultGradeScale
         editedNotes = climb.notes ?? ""
-        isEditing = true
+
+        // Determine outcome from attempts
+        outcome = climb.hasSend ? .send : .project
+
+        // Get tick type from send attempt if exists
+        if let sendAttempt = sortedAttempts.first(where: { $0.isSend }),
+           let sendType = sendAttempt.sendType {
+            tickType = sendType
+        } else {
+            tickType = inferredTickType
+        }
+    }
+
+    private func loadTags() async {
+        guard let tagService = tagService else {
+            await MainActor.run {
+                isLoadingTags = false
+            }
+            return
+        }
+
+        let holdTypes = await tagService.getHoldTypeTags()
+        let skills = await tagService.getSkillTags()
+
+        // Get existing impacts from climb
+        let existingHoldImpacts = climb.techniqueImpacts.filter { $0.deletedAt == nil }
+        let existingSkillImpacts = climb.skillImpacts.filter { $0.deletedAt == nil }
+
+        await MainActor.run {
+            // Map tags with existing impacts pre-selected
+            holdTypeSelections = holdTypes.map { tag in
+                let existingImpact = existingHoldImpacts.first { $0.tagId == tag.id }
+                return TagSelection(
+                    tagId: tag.id,
+                    tagName: tag.name,
+                    impact: existingImpact?.impact
+                )
+            }
+
+            skillSelections = skills.map { tag in
+                let existingImpact = existingSkillImpacts.first { $0.tagId == tag.id }
+                return TagSelection(
+                    tagId: tag.id,
+                    tagName: tag.name,
+                    impact: existingImpact?.impact
+                )
+            }
+
+            isLoadingTags = false
+        }
     }
 
     private func saveChanges() async {
@@ -169,13 +338,25 @@ struct ClimbDetailSheet: View {
         defer { isLoading = false }
 
         do {
-            let updates = ClimbUpdates(
+            // Convert selections to impacts (only include selected tags)
+            let holdImpacts = holdTypeSelections
+                .filter { $0.impact != nil }
+                .map { TagImpactInput(tagId: $0.tagId, impact: $0.impact!) }
+
+            let skillImpacts = skillSelections
+                .filter { $0.impact != nil }
+                .map { TagImpactInput(tagId: $0.tagId, impact: $0.impact!) }
+
+            let data = ClimbEditData(
                 name: editedName.isEmpty ? nil : editedName,
-                grade: Grade.parse(editedGrade),
-                notes: editedNotes.isEmpty ? nil : editedNotes
+                gradeString: editedGrade,
+                gradeScale: editedScale,
+                notes: editedNotes.isEmpty ? nil : editedNotes,
+                holdTypeImpacts: holdImpacts,
+                skillImpacts: skillImpacts
             )
-            try await onUpdate(updates)
-            isEditing = false
+            try await onUpdate(data)
+            dismiss()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -201,6 +382,19 @@ struct ClimbDetailSheet: View {
             }
         }
     }
+}
+
+/// Data transfer object for editing a climb.
+///
+/// Similar to AddClimbData but excludes fields that can't be changed after creation
+/// (like attempt count, which is managed via the attempt history).
+struct ClimbEditData: Sendable {
+    let name: String?
+    let gradeString: String
+    let gradeScale: GradeScale
+    let notes: String?
+    let holdTypeImpacts: [TagImpactInput]
+    let skillImpacts: [TagImpactInput]
 }
 
 /// Row displaying attempt details

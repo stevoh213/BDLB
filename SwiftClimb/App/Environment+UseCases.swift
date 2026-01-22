@@ -362,3 +362,16 @@ extension EnvironmentValues {
         set { self[PendingDeepLinkKey.self] = newValue }
     }
 }
+
+// MARK: - Tag Service
+
+private struct TagServiceKey: EnvironmentKey {
+    static let defaultValue: TagServiceProtocol? = nil
+}
+
+extension EnvironmentValues {
+    var tagService: TagServiceProtocol? {
+        get { self[TagServiceKey.self] }
+        set { self[TagServiceKey.self] = newValue }
+    }
+}

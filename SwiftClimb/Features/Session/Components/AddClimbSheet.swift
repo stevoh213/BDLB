@@ -79,11 +79,10 @@ struct AddClimbSheet: View {
     @State private var tickType: SendType = .flash
     @State private var showTickTypeOverride = false
 
-    // MARK: - Performance State
-    @State private var mentalRating: PerformanceRating? = nil
-    @State private var pacingRating: PerformanceRating? = nil
-    @State private var precisionRating: PerformanceRating? = nil
-    @State private var noCutLooseRating: PerformanceRating? = nil
+    // MARK: - Tag State
+    @State private var holdTypeSelections: [TagSelection] = []
+    @State private var skillSelections: [TagSelection] = []
+    @State private var isLoadingTags = true
 
     // MARK: - Notes State
     @State private var notes: String = ""
@@ -91,6 +90,9 @@ struct AddClimbSheet: View {
     // MARK: - UI State
     @State private var isLoading = false
     @State private var errorMessage: String?
+
+    // MARK: - Dependencies
+    @Environment(\.tagService) private var tagService
 
     /// Auto-inferred tick type based on discipline and attempt count.
     ///
@@ -115,8 +117,7 @@ struct AddClimbSheet: View {
             Form {
                 basicInfoSection
                 attemptsOutcomeSection
-                performanceSection
-                characteristicsSection
+                tagsSection
                 notesSection
             }
             .navigationTitle("New Climb")
@@ -151,6 +152,9 @@ struct AddClimbSheet: View {
             } message: {
                 Text("Auto-detected as \(inferredTickType.displayName). Change?")
             }
+        }
+        .task {
+            await loadTags()
         }
         .onAppear {
             setupInitialValues()
@@ -230,61 +234,32 @@ struct AddClimbSheet: View {
         }
     }
 
-    // MARK: - Performance Section
+    // MARK: - Tags Section
 
     @ViewBuilder
-    private var performanceSection: some View {
+    private var tagsSection: some View {
         Section {
-            ThumbsToggle(label: "Mental", value: $mentalRating)
-            ThumbsToggle(label: "Pacing", value: $pacingRating)
-            ThumbsToggle(label: "Precision", value: $precisionRating)
+            if isLoadingTags {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+            } else {
+                VStack(alignment: .leading, spacing: SCSpacing.lg) {
+                    TagSelectionGrid(
+                        title: "Hold Types",
+                        selections: $holdTypeSelections
+                    )
 
-            if session.discipline == .bouldering {
-                ThumbsToggle(label: "No Cut Loose", value: $noCutLooseRating)
+                    TagSelectionGrid(
+                        title: "Skills",
+                        selections: $skillSelections
+                    )
+                }
             }
         } header: {
-            Text("Performance")
+            Text("Tags")
         } footer: {
-            Text("How did specific aspects feel? Leave unselected if neutral.")
+            Text("Tap to mark as helped (green) or hindered (red). Tap again to deselect.")
         }
-    }
-
-    // MARK: - Characteristics Section (Stub)
-
-    // TODO: [Climb Characteristics] - Implement characteristics tagging system
-    // - Add state properties for tag selections (wallStyleTags, techniqueTags, skillTags)
-    // - Create tag selection views using SCWallStyleTag, SCTechniqueTag, SCSkillTag models
-    // - Add impact rating picker (helped/hindered/neutral) for each selected tag
-    // - Include tag selections in AddClimbData for persistence via AddClimbUseCase
-    // - Consider multi-select UI pattern (chips, checkboxes, or sheet-based picker)
-    // - Integrate with existing tag impact relationships on SCClimb model
-    @ViewBuilder
-    private var characteristicsSection: some View {
-        Section {
-            comingSoonRow(label: "Wall Features", icon: "square.grid.3x3")
-            comingSoonRow(label: "Holds & Moves", icon: "hand.raised")
-            comingSoonRow(label: "Skills Used", icon: "star")
-        } header: {
-            HStack {
-                Text("Characteristics")
-                Spacer()
-                Text("Coming Soon")
-                    .font(SCTypography.metadata)
-                    .foregroundStyle(SCColors.textTertiary)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func comingSoonRow(label: String, icon: String) -> some View {
-        HStack {
-            Label(label, systemImage: icon)
-            Spacer()
-            Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundStyle(SCColors.textTertiary)
-        }
-        .foregroundStyle(SCColors.textTertiary)
     }
 
     // MARK: - Notes Section
@@ -325,11 +300,44 @@ struct AddClimbSheet: View {
         selectedGrade = grades[grades.count / 2]
     }
 
+    private func loadTags() async {
+        guard let tagService = tagService else {
+            await MainActor.run {
+                isLoadingTags = false
+            }
+            return
+        }
+
+        let holdTypes = await tagService.getHoldTypeTags()
+        let skills = await tagService.getSkillTags()
+
+        await MainActor.run {
+            holdTypeSelections = holdTypes.map { tag in
+                TagSelection(tagId: tag.id, tagName: tag.name, impact: nil)
+            }
+
+            skillSelections = skills.map { tag in
+                TagSelection(tagId: tag.id, tagName: tag.name, impact: nil)
+            }
+
+            isLoadingTags = false
+        }
+    }
+
     private func saveClimb() async {
         isLoading = true
         defer { isLoading = false }
 
         do {
+            // Convert selections to impacts (only include selected tags)
+            let holdImpacts = holdTypeSelections
+                .filter { $0.impact != nil }
+                .map { TagImpactInput(tagId: $0.tagId, impact: $0.impact!) }
+
+            let skillImpacts = skillSelections
+                .filter { $0.impact != nil }
+                .map { TagImpactInput(tagId: $0.tagId, impact: $0.impact!) }
+
             let data = AddClimbData(
                 name: climbName.isEmpty ? nil : climbName,
                 gradeString: selectedGrade,
@@ -338,10 +346,8 @@ struct AddClimbSheet: View {
                 outcome: outcome,
                 tickType: outcome == .send ? tickType : nil,
                 notes: notes.isEmpty ? nil : notes,
-                mentalRating: mentalRating,
-                pacingRating: pacingRating,
-                precisionRating: precisionRating,
-                noCutLooseRating: noCutLooseRating
+                holdTypeImpacts: holdImpacts,
+                skillImpacts: skillImpacts
             )
             try await onAdd(data)
             dismiss()
@@ -365,7 +371,7 @@ struct AddClimbSheet: View {
 /// - `name` - Route can be unnamed (common for gym problems)
 /// - `tickType` - Only required for sends, nil for projects
 /// - `notes` - Optional personal observations
-/// - Performance ratings - All optional (nil = neutral)
+/// - Tag impacts - Arrays of selected tags with their impact ratings
 ///
 /// ## Example
 ///
@@ -378,17 +384,15 @@ struct AddClimbSheet: View {
 ///     outcome: .send,
 ///     tickType: .redpoint,
 ///     notes: "Tricky heel hook",
-///     mentalRating: .positive,
-///     pacingRating: nil,
-///     precisionRating: .negative,
-///     noCutLooseRating: .positive
+///     holdTypeImpacts: [
+///         TagImpactInput(tagId: crimpId, impact: .helped)
+///     ],
+///     skillImpacts: [
+///         TagImpactInput(tagId: mentalId, impact: .hindered)
+///     ]
 /// )
 /// ```
-// TODO: [Climb Characteristics] - Add tag impact fields when characteristics UI is implemented
-// - wallStyleImpacts: [(tagId: UUID, impact: TagImpact)]?
-// - techniqueImpacts: [(tagId: UUID, impact: TagImpact)]?
-// - skillImpacts: [(tagId: UUID, impact: TagImpact)]?
-struct AddClimbData {
+struct AddClimbData: Sendable {
     /// Optional route or problem name.
     ///
     /// Nil indicates an unnamed climb (common for gym boulder problems).
@@ -414,19 +418,11 @@ struct AddClimbData {
     /// Optional personal notes about the climb.
     let notes: String?
 
-    /// Mental performance rating (nil = neutral).
-    let mentalRating: PerformanceRating?
+    /// Hold type tag impacts (only selected tags with helped/hindered).
+    let holdTypeImpacts: [TagImpactInput]
 
-    /// Pacing performance rating (nil = neutral).
-    let pacingRating: PerformanceRating?
-
-    /// Precision performance rating (nil = neutral).
-    let precisionRating: PerformanceRating?
-
-    /// No cut loose performance rating (nil = neutral).
-    ///
-    /// Only applicable for bouldering discipline.
-    let noCutLooseRating: PerformanceRating?
+    /// Skill tag impacts (only selected tags with helped/hindered).
+    let skillImpacts: [TagImpactInput]
 }
 
 #Preview {

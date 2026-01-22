@@ -115,6 +115,7 @@ protocol AddClimbUseCaseProtocol: Sendable {
 final class AddClimbUseCase: AddClimbUseCaseProtocol, Sendable {
     private let climbService: ClimbServiceProtocol
     private let attemptService: AttemptServiceProtocol
+    private let tagService: TagServiceProtocol
     private let liveActivityManager: LiveActivityManagerProtocol?
 
     /// Creates a new add climb use case.
@@ -122,14 +123,17 @@ final class AddClimbUseCase: AddClimbUseCaseProtocol, Sendable {
     /// - Parameters:
     ///   - climbService: Service for climb persistence operations.
     ///   - attemptService: Service for attempt persistence operations.
+    ///   - tagService: Service for tag impact operations.
     ///   - liveActivityManager: Optional manager for Live Activity updates.
     init(
         climbService: ClimbServiceProtocol,
         attemptService: AttemptServiceProtocol,
+        tagService: TagServiceProtocol,
         liveActivityManager: LiveActivityManagerProtocol? = nil
     ) {
         self.climbService = climbService
         self.attemptService = attemptService
+        self.tagService = tagService
         self.liveActivityManager = liveActivityManager
     }
 
@@ -172,12 +176,22 @@ final class AddClimbUseCase: AddClimbUseCaseProtocol, Sendable {
             tickType: data.tickType
         )
 
-        // TODO: [Climb Characteristics] - Create tag impact records when AddClimbData includes tag selections
-        // - Iterate through data.wallStyleImpacts and create SCWallStyleImpact records
-        // - Iterate through data.techniqueImpacts and create SCTechniqueImpact records
-        // - Iterate through data.skillImpacts and create SCSkillImpact records
-        // - Use appropriate service methods for tag impact persistence
-        // - Ensure offline-first: persist locally first, sync in background
+        // Create tag impacts
+        if !data.holdTypeImpacts.isEmpty {
+            try await tagService.setHoldTypeImpacts(
+                userId: userId,
+                climbId: climbId,
+                impacts: data.holdTypeImpacts
+            )
+        }
+
+        if !data.skillImpacts.isEmpty {
+            try await tagService.setSkillImpacts(
+                userId: userId,
+                climbId: climbId,
+                impacts: data.skillImpacts
+            )
+        }
 
         // Update Live Activity with new counts
         // Note: We need to get the updated counts from the session

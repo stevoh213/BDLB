@@ -16,9 +16,9 @@
 		7893438D2F22986C007DFF23 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7893438C2F22986C007DFF23 /* WidgetKit.framework */; };
 		7893438F2F22986C007DFF23 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7893438E2F22986C007DFF23 /* SwiftUI.framework */; };
 		789343A02F229870007DFF23 /* SwiftClimbWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7893438B2F22986C007DFF23 /* SwiftClimbWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		789343B22F22A000007DFF23 /* SwiftClimbFeature in Frameworks */ = {isa = PBXBuildFile; productRef = 789343B12F22A000007DFF23 /* SwiftClimbFeature */; };
 		8B41F6832DEDD23B001A66F9 /* SwiftClimbFeature in Frameworks */ = {isa = PBXBuildFile; productRef = 8B41F6822DEDD23B001A66F9 /* SwiftClimbFeature */; };
 		8B41F6852DEDD25C001A66F9 /* SwiftClimbFeature in Frameworks */ = {isa = PBXBuildFile; productRef = 8B41F6842DEDD25C001A66F9 /* SwiftClimbFeature */; };
-		789343B22F22A000007DFF23 /* SwiftClimbFeature in Frameworks */ = {isa = PBXBuildFile; productRef = 789343B12F22A000007DFF23 /* SwiftClimbFeature */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -730,15 +730,15 @@
 			package = 781F17E52F1EBDC800848A7C /* XCRemoteSwiftPackageReference "supabase-swift" */;
 			productName = Supabase;
 		};
+		789343B12F22A000007DFF23 /* SwiftClimbFeature */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SwiftClimbFeature;
+		};
 		8B41F6822DEDD23B001A66F9 /* SwiftClimbFeature */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SwiftClimbFeature;
 		};
 		8B41F6842DEDD25C001A66F9 /* SwiftClimbFeature */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = SwiftClimbFeature;
-		};
-		789343B12F22A000007DFF23 /* SwiftClimbFeature */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SwiftClimbFeature;
 		};

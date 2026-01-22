@@ -23,6 +23,9 @@ struct SwiftClimbApp: App {
     // Deep link handling
     @State private var pendingDeepLink: DeepLink?
 
+    // Services
+    let tagService: TagServiceProtocol
+
     // Use cases - stubbed implementations
     let startSessionUseCase: StartSessionUseCaseProtocol
     let endSessionUseCase: EndSessionUseCaseProtocol
@@ -80,6 +83,8 @@ struct SwiftClimbApp: App {
         let sessionService = SessionService(modelContainer: modelContainer)
         let climbService = ClimbService(modelContainer: modelContainer)
         let attemptService = AttemptService(modelContainer: modelContainer)
+        let tagService = TagService(modelContainer: modelContainer)
+        self.tagService = tagService
         let socialService = SocialServiceImpl(
             modelContainer: modelContainer,
             followsTable: followsTable,
@@ -116,13 +121,14 @@ struct SwiftClimbApp: App {
         addClimbUseCase = AddClimbUseCase(
             climbService: climbService,
             attemptService: attemptService,
+            tagService: tagService,
             liveActivityManager: liveActivityMgr
         )
         logAttemptUseCase = LogAttemptUseCase(
             attemptService: attemptService,
             liveActivityManager: liveActivityMgr
         )
-        updateClimbUseCase = UpdateClimbUseCase(climbService: climbService)
+        updateClimbUseCase = UpdateClimbUseCase(climbService: climbService, tagService: tagService)
         deleteClimbUseCase = DeleteClimbUseCase(
             climbService: climbService,
             liveActivityManager: liveActivityMgr
@@ -185,6 +191,8 @@ struct SwiftClimbApp: App {
                     .environment(\.uploadProfilePhotoUseCase, uploadProfilePhotoUseCase)
                     .environment(\.getFollowersUseCase, getFollowersUseCase)
                     .environment(\.getFollowingUseCase, getFollowingUseCase)
+                    // Services
+                    .environment(\.tagService, tagService)
                     // Sync actor
                     .environment(\.syncActor, syncActor)
                     // Live Activity Manager
@@ -206,6 +214,9 @@ struct SwiftClimbApp: App {
                 pendingDeepLink = DeepLink(url: url)
             }
             .task {
+                // Seed predefined tags (runs once on first launch)
+                try? await tagService.seedPredefinedTagsIfNeeded()
+
                 await authManager.loadSession()
                 // Sync profile to SwiftData after session restore
                 if authManager.isAuthenticated {

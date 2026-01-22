@@ -59,7 +59,7 @@ struct ActiveSessionContent: View {
             ClimbDetailSheet(
                 climb: climb,
                 session: session,
-                onUpdate: { updates in try await handleUpdateClimb(climb.id, updates) },
+                onUpdate: { data in try await handleUpdateClimb(climb.id, data) },
                 onDelete: { try await handleDeleteClimb(climb.id) },
                 onLogAttempt: { outcome, sendType in
                     try await handleLogAttempt(climb.id, outcome, sendType)
@@ -238,20 +238,18 @@ struct ActiveSessionContent: View {
         )
     }
 
-    private func handleUpdateClimb(_ climbId: UUID, _ updates: ClimbUpdates) async throws {
-        guard let useCase = updateClimbUseCase else {
+    private func handleUpdateClimb(_ climbId: UUID, _ data: ClimbEditData) async throws {
+        guard let useCase = updateClimbUseCase,
+              let userId = currentUserId else {
             throw NSError(domain: "ActiveSessionContent", code: 2, userInfo: [
                 NSLocalizedDescriptionKey: "Update climb service not available"
             ])
         }
 
         try await useCase.execute(
+            userId: userId,
             climbId: climbId,
-            name: updates.name,
-            gradeString: updates.grade?.original,
-            notes: updates.notes,
-            belayPartnerName: updates.belayPartnerName,
-            locationDisplay: updates.locationDisplay
+            data: data
         )
     }
 
