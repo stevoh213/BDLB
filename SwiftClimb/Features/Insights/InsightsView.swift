@@ -1,3 +1,8 @@
+// InsightsView.swift
+// SwiftClimb
+//
+// Main view for the Insights tab showing premium analytics.
+
 import SwiftUI
 import SwiftData
 
@@ -7,21 +12,46 @@ struct InsightsView: View {
     @Environment(\.syncActor) private var syncActor
     @Environment(\.currentUserId) private var currentUserId
 
+    // Query all sessions for insights
+    @Query(
+        filter: #Predicate<SCSession> { $0.deletedAt == nil },
+        sort: \SCSession.startedAt,
+        order: .reverse
+    )
+    private var allSessions: [SCSession]
+
+    // Query tag catalogs for radar chart lookups
+    @Query private var skillTags: [SCSkillTag]
+    @Query private var techniqueTags: [SCTechniqueTag]
+    @Query private var wallStyleTags: [SCWallStyleTag]
+
+    // Query impacts directly (workaround for SwiftData relationship not being established during sync)
+    @Query(filter: #Predicate<SCSkillImpact> { $0.deletedAt == nil })
+    private var skillImpacts: [SCSkillImpact]
+
+    @Query(filter: #Predicate<SCTechniqueImpact> { $0.deletedAt == nil })
+    private var techniqueImpacts: [SCTechniqueImpact]
+
+    @Query(filter: #Predicate<SCWallStyleImpact> { $0.deletedAt == nil })
+    private var wallStyleImpacts: [SCWallStyleImpact]
+
     @State private var isPremium = false
     @State private var isLoading = true
     @State private var showPaywall = false
     @State private var isSyncing = false
+    @State private var dataProvider = InsightsDataProvider()
 
     var body: some View {
         NavigationStack {
-            ScrollView {
+            Group {
                 if isLoading {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, minHeight: 200)
+                    loadingView
                 } else if isPremium {
-                    PremiumInsightsContent()
+                    PremiumInsightsContent(dataProvider: dataProvider)
                 } else {
-                    InsightsUpsellView(onUpgrade: { showPaywall = true })
+                    ScrollView {
+                        InsightsUpsellView(onUpgrade: { showPaywall = true })
+                    }
                 }
             }
             .refreshable {
@@ -32,9 +62,35 @@ struct InsightsView: View {
         .task {
             await checkPremiumStatus()
         }
+        .task(id: allSessions.count) {
+            // Update data provider when sessions change
+            dataProvider.updateSessions(allSessions)
+        }
+        .task(id: skillTags.count) {
+            // Update tag lookups for radar charts
+            dataProvider.updateSkillTags(skillTags)
+            dataProvider.updateTechniqueTags(techniqueTags)
+            dataProvider.updateWallStyleTags(wallStyleTags)
+        }
+        .task(id: skillImpacts.count + techniqueImpacts.count + wallStyleImpacts.count) {
+            // Update impacts directly (bypasses broken SwiftData relationship)
+            dataProvider.updateSkillImpacts(skillImpacts)
+            dataProvider.updateTechniqueImpacts(techniqueImpacts)
+            dataProvider.updateWallStyleImpacts(wallStyleImpacts)
+        }
         .sheet(isPresented: $showPaywall) {
             PaywallView()
         }
+    }
+
+    private var loadingView: some View {
+        VStack(spacing: SCSpacing.md) {
+            ProgressView()
+            Text("Loading insights...")
+                .font(SCTypography.secondary)
+                .foregroundStyle(SCColors.textSecondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func performManualSync() async {
@@ -57,20 +113,6 @@ struct InsightsView: View {
         defer { isLoading = false }
 
         isPremium = await premiumService?.isPremium() ?? false
-    }
-}
-
-// MARK: - Premium Content
-
-@MainActor
-private struct PremiumInsightsContent: View {
-    var body: some View {
-        VStack(spacing: SCSpacing.lg) {
-            // TODO: Implement actual insights content
-            Text("Premium insights content")
-                .font(SCTypography.body)
-        }
-        .padding()
     }
 }
 
@@ -97,6 +139,8 @@ private struct InsightsUpsellView: View {
                 FeatureRow(icon: "calendar", text: "View climbing frequency trends")
                 FeatureRow(icon: "figure.climbing", text: "Analyze send rates by discipline")
                 FeatureRow(icon: "brain.head.profile", text: "Identify strengths and weaknesses")
+                FeatureRow(icon: "triangle.fill", text: "Visualize your grade pyramid")
+                FeatureRow(icon: "hexagon.fill", text: "See tag impact patterns")
             }
             .padding()
             .background(SCColors.surfaceSecondary)
@@ -127,4 +171,16 @@ private struct FeatureRow: View {
                 .font(SCTypography.body)
         }
     }
+}
+
+// MARK: - Preview
+
+#Preview("Premium") {
+    InsightsView()
+        .modelContainer(for: SCSession.self, inMemory: true)
+}
+
+#Preview("Non-Premium") {
+    InsightsView()
+        .modelContainer(for: SCSession.self, inMemory: true)
 }

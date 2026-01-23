@@ -402,6 +402,15 @@ actor SyncActor {
         } else {
             let newClimb = dto.toDomain()
             context.insert(newClimb)
+
+            // Establish relationship with parent session
+            let sessionPredicate = #Predicate<SCSession> { session in
+                session.id == dto.sessionId
+            }
+            let sessionDescriptor = FetchDescriptor<SCSession>(predicate: sessionPredicate)
+            if let session = try context.fetch(sessionDescriptor).first {
+                session.climbs.append(newClimb)
+            }
         }
     }
 
@@ -429,6 +438,15 @@ actor SyncActor {
         } else {
             let newAttempt = dto.toDomain()
             context.insert(newAttempt)
+
+            // Establish relationship with parent climb
+            let climbPredicate = #Predicate<SCClimb> { climb in
+                climb.id == dto.climbId
+            }
+            let climbDescriptor = FetchDescriptor<SCClimb>(predicate: climbPredicate)
+            if let climb = try context.fetch(climbDescriptor).first {
+                climb.attempts.append(newAttempt)
+            }
         }
     }
 
@@ -456,6 +474,15 @@ actor SyncActor {
             // New record from remote, insert
             let newImpact = dto.toDomain()
             context.insert(newImpact)
+
+            // Establish relationship with parent climb
+            let climbPredicate = #Predicate<SCClimb> { climb in
+                climb.id == dto.climbId
+            }
+            let climbDescriptor = FetchDescriptor<SCClimb>(predicate: climbPredicate)
+            if let climb = try context.fetch(climbDescriptor).first {
+                climb.techniqueImpacts.append(newImpact)
+            }
         }
     }
 
@@ -480,6 +507,15 @@ actor SyncActor {
         } else {
             let newImpact = dto.toDomain()
             context.insert(newImpact)
+
+            // Establish relationship with parent climb
+            let climbPredicate = #Predicate<SCClimb> { climb in
+                climb.id == dto.climbId
+            }
+            let climbDescriptor = FetchDescriptor<SCClimb>(predicate: climbPredicate)
+            if let climb = try context.fetch(climbDescriptor).first {
+                climb.skillImpacts.append(newImpact)
+            }
         }
     }
 
@@ -504,6 +540,15 @@ actor SyncActor {
         } else {
             let newImpact = dto.toDomain()
             context.insert(newImpact)
+
+            // Establish relationship with parent climb
+            let climbPredicate = #Predicate<SCClimb> { climb in
+                climb.id == dto.climbId
+            }
+            let climbDescriptor = FetchDescriptor<SCClimb>(predicate: climbPredicate)
+            if let climb = try context.fetch(climbDescriptor).first {
+                climb.wallStyleImpacts.append(newImpact)
+            }
         }
     }
 }
