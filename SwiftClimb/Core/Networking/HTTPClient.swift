@@ -72,6 +72,14 @@ actor HTTPClient {
                 return date
             }
 
+            // Fallback to date-only format (YYYY-MM-DD) for Postgres DATE columns
+            let dateOnlyFormatter = DateFormatter()
+            dateOnlyFormatter.dateFormat = "yyyy-MM-dd"
+            dateOnlyFormatter.timeZone = TimeZone(identifier: "UTC")
+            if let date = dateOnlyFormatter.date(from: dateString) {
+                return date
+            }
+
             throw DecodingError.dataCorruptedError(
                 in: container,
                 debugDescription: "Cannot decode date: \(dateString)"
