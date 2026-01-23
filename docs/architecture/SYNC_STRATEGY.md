@@ -573,6 +573,69 @@ Eventually, soft-deleted records should be hard-deleted:
 - Reduces database size
 - Not implemented in MVP
 
+### Unique Constraints with Soft Deletes
+
+**Problem**: Standard UNIQUE constraints block inserts when soft-deleted records exist.
+
+**Example Scenario**:
+```sql
+-- Table with UNIQUE constraint
+CREATE TABLE technique_impacts (
+    user_id UUID NOT NULL,
+    climb_id UUID NOT NULL,
+    tag_id UUID NOT NULL,
+    deleted_at TIMESTAMPTZ,
+    UNIQUE (user_id, climb_id, tag_id)  -- ❌ Blocks soft-deleted records
+);
+
+-- User adds tag to climb
+INSERT INTO technique_impacts (user_id, climb_id, tag_id) VALUES (...);
+
+-- User removes tag (soft delete)
+UPDATE technique_impacts SET deleted_at = NOW() WHERE ...;
+
+-- User adds same tag again
+INSERT INTO technique_impacts (user_id, climb_id, tag_id) VALUES (...);
+-- ERROR: duplicate key value violates unique constraint
+-- The soft-deleted record still blocks the insert!
+```
+
+**Solution**: Use partial unique indexes instead of UNIQUE constraints.
+
+```sql
+-- Drop the standard UNIQUE constraint
+ALTER TABLE technique_impacts
+    DROP CONSTRAINT IF EXISTS technique_impacts_user_id_climb_id_tag_id_key;
+
+-- Add partial unique index that excludes soft-deleted records
+CREATE UNIQUE INDEX technique_impacts_user_climb_tag_unique
+    ON technique_impacts (user_id, climb_id, tag_id)
+    WHERE deleted_at IS NULL;
+```
+
+**Benefits**:
+- Uniqueness enforced only for active records (`deleted_at IS NULL`)
+- Soft-deleted records don't block new inserts
+- Multiple soft-deleted records can exist with same key
+- New insert allowed after soft delete
+
+**Applied To**:
+- `technique_impacts` table (hold type tags)
+- `skill_impacts` table (skill tags)
+- `wall_style_impacts` table (wall style tags)
+
+**Migration**: See `Database/migrations/20260123_fix_impact_unique_constraints.sql`
+
+**Troubleshooting**:
+If sync fails with "409 Conflict" errors on tag impacts, verify that partial unique indexes are in place:
+```sql
+-- Check for partial unique indexes
+SELECT indexname, indexdef
+FROM pg_indexes
+WHERE tablename IN ('technique_impacts', 'skill_impacts', 'wall_style_impacts')
+  AND indexdef LIKE '%WHERE deleted_at IS NULL%';
+```
+
 ---
 
 ## Retry Strategy
@@ -789,6 +852,25 @@ Task.detached {
 
 ## Troubleshooting
 
+### Issue: 409 Conflict Errors on Tag Impact Sync
+
+**Symptoms**: Tag impacts fail to sync with "409 Conflict" error
+
+**Root Cause**: Standard UNIQUE constraints block inserts when soft-deleted records exist with the same (user_id, climb_id, tag_id) combination.
+
+**Solution**: Ensure partial unique indexes are in place instead of UNIQUE constraints:
+```sql
+-- Verify partial unique indexes exist
+SELECT indexname, indexdef
+FROM pg_indexes
+WHERE tablename IN ('technique_impacts', 'skill_impacts', 'wall_style_impacts')
+  AND indexdef LIKE '%WHERE deleted_at IS NULL%';
+```
+
+If indexes are missing, apply migration: `Database/migrations/20260123_fix_impact_unique_constraints.sql`
+
+**Prevention**: Always use partial unique indexes for tables with soft-delete pattern.
+
 ### Issue: Sync Never Completes
 
 **Symptoms**: `needsSync = true` never clears
@@ -798,6 +880,7 @@ Task.detached {
 2. Foreign key violation → Check dependency order
 3. Auth token expired → Refresh token
 4. Supabase RLS policy blocking → Check policies
+5. 409 Conflict error → Check unique constraints (see above)
 
 **Debug**:
 ```swift
@@ -885,5 +968,9 @@ For architecture details, see [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ---
 
-**Last Updated**: 2026-01-18
+**Last Updated**: 2026-01-23
 **Author**: Agent 4 (The Scribe)
+
+**Recent Changes**:
+- 2026-01-23: Added section on partial unique indexes for soft-delete pattern
+- 2026-01-23: Added troubleshooting entry for 409 Conflict errors on tag impacts

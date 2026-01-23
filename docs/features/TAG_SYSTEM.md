@@ -683,6 +683,8 @@ struct TagSelectionGrid: View {
 - Synced to Supabase for conflict resolution
 - Eventually hard-deleted in cleanup process
 
+**Important**: Tag impact tables use partial unique indexes instead of standard UNIQUE constraints to support soft-delete pattern. The index `WHERE deleted_at IS NULL` ensures uniqueness only for active records, allowing new inserts with the same (user_id, climb_id, tag_id) combination after soft deletion. See migration `20260123_fix_impact_unique_constraints.sql` for implementation.
+
 ---
 
 ## Database Schema
@@ -736,6 +738,11 @@ CREATE TABLE public.technique_impacts (
 CREATE INDEX idx_technique_impacts_climb_id ON technique_impacts(climb_id);
 CREATE INDEX idx_technique_impacts_user_id ON technique_impacts(user_id);
 CREATE INDEX idx_technique_impacts_updated_at ON technique_impacts(updated_at);
+
+-- Partial unique index for soft-delete support (WHERE deleted_at IS NULL)
+CREATE UNIQUE INDEX technique_impacts_user_climb_tag_unique
+    ON technique_impacts (user_id, climb_id, tag_id)
+    WHERE deleted_at IS NULL;
 ```
 
 #### skill_impacts
@@ -755,6 +762,11 @@ CREATE TABLE public.skill_impacts (
 CREATE INDEX idx_skill_impacts_climb_id ON skill_impacts(climb_id);
 CREATE INDEX idx_skill_impacts_user_id ON skill_impacts(user_id);
 CREATE INDEX idx_skill_impacts_updated_at ON skill_impacts(updated_at);
+
+-- Partial unique index for soft-delete support (WHERE deleted_at IS NULL)
+CREATE UNIQUE INDEX skill_impacts_user_climb_tag_unique
+    ON skill_impacts (user_id, climb_id, tag_id)
+    WHERE deleted_at IS NULL;
 ```
 
 ### RLS Policies
@@ -1101,8 +1113,21 @@ WHERE si.user_id = $1
 
 **Total Lines**: ~600 new, ~200 modified
 
+### Version 1.1 (2026-01-23)
+
+**Bug Fix: Unique Constraint Sync Issue**:
+- Fixed 409 Conflict errors during tag impact sync
+- Root cause: Standard UNIQUE constraints blocked new inserts after soft deletes
+- Solution: Replaced UNIQUE constraints with partial unique indexes (`WHERE deleted_at IS NULL`)
+- Applied to: `technique_impacts`, `skill_impacts`, `wall_style_impacts` tables
+- Migration: `20260123_fix_impact_unique_constraints.sql`
+- Documentation: Added notes on partial unique index pattern for soft-delete support
+
+**Technical Details**:
+The original schema used standard UNIQUE constraints on (user_id, climb_id, tag_id), which prevented users from re-adding the same tag after removal. When a tag was soft-deleted (deleted_at set), the constraint still blocked new inserts with the same combination. Partial unique indexes solve this by enforcing uniqueness only for active records (WHERE deleted_at IS NULL), allowing multiple soft-deleted records and new active records with the same key.
+
 ---
 
 **Document Maintained By**: Agent 4 (The Scribe)
-**Last Review**: 2026-01-22
+**Last Review**: 2026-01-23
 **Next Review**: When tag system is extended or analytics added
