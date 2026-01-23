@@ -109,6 +109,19 @@ extension EnvironmentValues {
     }
 }
 
+// MARK: - Update Session Use Case
+
+private struct UpdateSessionUseCaseKey: EnvironmentKey {
+    static let defaultValue: UpdateSessionUseCaseProtocol? = nil
+}
+
+extension EnvironmentValues {
+    var updateSessionUseCase: UpdateSessionUseCaseProtocol? {
+        get { self[UpdateSessionUseCaseKey.self] }
+        set { self[UpdateSessionUseCaseKey.self] = newValue }
+    }
+}
+
 // MARK: - Add Climb Use Case
 
 private struct AddClimbUseCaseKey: EnvironmentKey {

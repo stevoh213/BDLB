@@ -32,6 +32,7 @@ struct SwiftClimbApp: App {
     let getActiveSessionUseCase: GetActiveSessionUseCaseProtocol
     let listSessionsUseCase: ListSessionsUseCaseProtocol
     let deleteSessionUseCase: DeleteSessionUseCaseProtocol
+    let updateSessionUseCase: UpdateSessionUseCaseProtocol
     let addClimbUseCase: AddClimbUseCaseProtocol
     let logAttemptUseCase: LogAttemptUseCaseProtocol
     let updateClimbUseCase: UpdateClimbUseCaseProtocol
@@ -119,6 +120,7 @@ struct SwiftClimbApp: App {
         getActiveSessionUseCase = GetActiveSessionUseCase(sessionService: sessionService)
         listSessionsUseCase = ListSessionsUseCase(sessionService: sessionService)
         deleteSessionUseCase = DeleteSessionUseCase(sessionService: sessionService)
+        updateSessionUseCase = UpdateSessionUseCase(sessionService: sessionService)
         addClimbUseCase = AddClimbUseCase(
             climbService: climbService,
             attemptService: attemptService,
@@ -176,6 +178,7 @@ struct SwiftClimbApp: App {
                     .environment(\.getActiveSessionUseCase, getActiveSessionUseCase)
                     .environment(\.listSessionsUseCase, listSessionsUseCase)
                     .environment(\.deleteSessionUseCase, deleteSessionUseCase)
+                    .environment(\.updateSessionUseCase, updateSessionUseCase)
                     .environment(\.addClimbUseCase, addClimbUseCase)
                     .environment(\.logAttemptUseCase, logAttemptUseCase)
                     .environment(\.updateClimbUseCase, updateClimbUseCase)

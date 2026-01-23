@@ -147,6 +147,40 @@ protocol SessionServiceProtocol: Sendable {
     ///
     /// - Throws: `SessionError.sessionNotFound` if session ID is invalid
     func updateSessionNotes(sessionId: UUID, notes: String?) async throws
+
+    /// Update a completed session's details
+    ///
+    /// Allows updating all editable fields on a completed session.
+    /// Sets `needsSync = true` to queue for background sync.
+    ///
+    /// - Parameters:
+    ///   - sessionId: The UUID of the session to update
+    ///   - startedAt: The session start time
+    ///   - endedAt: The session end time (must be after startedAt)
+    ///   - discipline: The climbing discipline
+    ///   - mentalReadiness: Optional mental readiness score (1-5)
+    ///   - physicalReadiness: Optional physical readiness score (1-5)
+    ///   - rpe: Optional RPE score (1-10)
+    ///   - pumpLevel: Optional pump level (1-5)
+    ///   - notes: Optional session notes
+    ///
+    /// - Throws:
+    ///   - `SessionError.sessionNotFound` if session ID is invalid
+    ///   - `SessionError.endTimeBeforeStartTime` if endedAt <= startedAt
+    ///   - `SessionError.invalidReadinessValue` if readiness is outside 1-5 range
+    ///   - `SessionError.invalidRPEValue` if RPE is outside 1-10 range
+    ///   - `SessionError.invalidPumpLevelValue` if pump level is outside 1-5 range
+    func updateSession(
+        sessionId: UUID,
+        startedAt: Date,
+        endedAt: Date,
+        discipline: Discipline,
+        mentalReadiness: Int?,
+        physicalReadiness: Int?,
+        rpe: Int?,
+        pumpLevel: Int?,
+        notes: String?
+    ) async throws
 }
 
 // MARK: - Implementation
@@ -362,6 +396,64 @@ actor SessionService: SessionServiceProtocol {
                 throw SessionError.sessionNotFound
             }
 
+            session.notes = notes
+            session.updatedAt = Date()
+            session.needsSync = true
+
+            try modelContext.save()
+        }
+    }
+
+    func updateSession(
+        sessionId: UUID,
+        startedAt: Date,
+        endedAt: Date,
+        discipline: Discipline,
+        mentalReadiness: Int?,
+        physicalReadiness: Int?,
+        rpe: Int?,
+        pumpLevel: Int?,
+        notes: String?
+    ) async throws {
+        // Validate time order
+        guard endedAt > startedAt else {
+            throw SessionError.endTimeBeforeStartTime
+        }
+
+        // Validate readiness values
+        if let mental = mentalReadiness, !(1...5).contains(mental) {
+            throw SessionError.invalidReadinessValue(mental)
+        }
+        if let physical = physicalReadiness, !(1...5).contains(physical) {
+            throw SessionError.invalidReadinessValue(physical)
+        }
+
+        // Validate RPE
+        if let rpe = rpe, !(1...10).contains(rpe) {
+            throw SessionError.invalidRPEValue(rpe)
+        }
+
+        // Validate pump level
+        if let pump = pumpLevel, !(1...5).contains(pump) {
+            throw SessionError.invalidPumpLevelValue(pump)
+        }
+
+        try await MainActor.run {
+            let predicate = #Predicate<SCSession> { $0.id == sessionId }
+            let descriptor = FetchDescriptor<SCSession>(predicate: predicate)
+
+            guard let session = try modelContext.fetch(descriptor).first else {
+                throw SessionError.sessionNotFound
+            }
+
+            // Update all editable fields
+            session.startedAt = startedAt
+            session.endedAt = endedAt
+            session.discipline = discipline
+            session.mentalReadiness = mentalReadiness
+            session.physicalReadiness = physicalReadiness
+            session.rpe = rpe
+            session.pumpLevel = pumpLevel
             session.notes = notes
             session.updatedAt = Date()
             session.needsSync = true

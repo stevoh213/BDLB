@@ -6,8 +6,10 @@ struct SessionDetailView: View {
     let session: SCSession
 
     @Environment(\.deleteSessionUseCase) private var deleteSessionUseCase
+    @Environment(\.updateSessionUseCase) private var updateSessionUseCase
     @Environment(\.dismiss) private var dismiss
     @State private var showDeleteConfirmation = false
+    @State private var showEditSheet = false
     @State private var isDeleting = false
 
     private var formattedDuration: String {
@@ -41,6 +43,12 @@ struct SessionDetailView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    Button {
+                        showEditSheet = true
+                    } label: {
+                        Label("Edit Session", systemImage: "pencil")
+                    }
+
                     Button(role: .destructive) {
                         showDeleteConfirmation = true
                     } label: {
@@ -49,6 +57,11 @@ struct SessionDetailView: View {
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }
+            }
+        }
+        .sheet(isPresented: $showEditSheet) {
+            EditSessionSheet(session: session) { editData in
+                try await updateSession(with: editData)
             }
         }
         .confirmationDialog(
@@ -176,6 +189,22 @@ struct SessionDetailView: View {
             }
             isDeleting = false
         }
+    }
+
+    private func updateSession(with editData: SessionEditData) async throws {
+        guard let useCase = updateSessionUseCase else { return }
+
+        try await useCase.execute(
+            sessionId: session.id,
+            startedAt: editData.startedAt,
+            endedAt: editData.endedAt,
+            discipline: editData.discipline,
+            mentalReadiness: editData.mentalReadiness,
+            physicalReadiness: editData.physicalReadiness,
+            rpe: editData.rpe,
+            pumpLevel: editData.pumpLevel,
+            notes: editData.notes
+        )
     }
 }
 
