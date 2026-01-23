@@ -61,6 +61,7 @@ docs/
 - [Sessions Feature](features/SESSIONS.md) - Session tracking and management
 - [Add Climb Feature](features/ADD_CLIMB.md) - Comprehensive climb data capture
 - [Add Climb API Reference](features/ADD_CLIMB_API.md) - Technical API documentation
+- [Tag System](features/TAG_SYSTEM.md) - Hold types and skills tagging with impact ratings
 
 ### For Implementation
 - [Next Steps](../NEXT_STEPS.md) - Current roadmap and priorities
@@ -100,4 +101,4 @@ When adding new documentation:
 
 ---
 
-**Last Updated**: 2026-01-21
+**Last Updated**: 2026-01-22

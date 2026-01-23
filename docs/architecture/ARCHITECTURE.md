@@ -265,7 +265,7 @@ Domain/Services/
 ├── SessionService.swift
 ├── ClimbService.swift
 ├── AttemptService.swift
-├── TagService.swift
+├── TagService.swift           # Tag catalog + impact tracking
 ├── SocialService.swift
 └── GradeConversionService.swift
 ```
@@ -296,6 +296,33 @@ actor SessionService: SessionServiceProtocol {
 - Enables testing with mock implementations
 - Allows swapping implementations (e.g., in-memory vs. SwiftData)
 - Documents interface clearly
+
+**Example: TagService**:
+```swift
+protocol TagServiceProtocol: Sendable {
+    func getHoldTypeTags() async -> [TechniqueTagDTO]
+    func getSkillTags() async -> [SkillTagDTO]
+    func setHoldTypeImpacts(userId: UUID, climbId: UUID, impacts: [TagImpactInput]) async throws
+    func setSkillImpacts(userId: UUID, climbId: UUID, impacts: [TagImpactInput]) async throws
+    func seedPredefinedTagsIfNeeded() async throws
+}
+
+actor TagService: TagServiceProtocol {
+    private let modelContainer: ModelContainer
+    private var holdTypeTagsCache: [TechniqueTagDTO]?
+    private var skillTagsCache: [SkillTagDTO]?
+
+    func getHoldTypeTags() async -> [TechniqueTagDTO] {
+        // Return cached tags or fetch from SwiftData
+    }
+
+    func setHoldTypeImpacts(...) async throws {
+        // Soft delete existing, create new impacts
+    }
+}
+```
+
+**Pattern**: TagService uses in-memory caching for the predefined tag catalog (seeded once on first launch), while tag impacts are persisted to SwiftData and synced to Supabase.
 
 #### Domain/UseCases
 Single-purpose business operations.
@@ -1238,6 +1265,17 @@ For more specific topics, see:
 ---
 
 ## Recent Updates
+
+### 2026-01-22: Tag System with Three-State Selection
+- Implemented TagService actor with predefined tag catalog (27 tags)
+- Created SCTechniqueTag, SCSkillTag, SCTechniqueImpact, SCSkillImpact models
+- Added TagImpactChip component with three-state cycle (unselected → helped → hindered)
+- Added TagSelectionGrid component with custom FlowLayout
+- Integrated tags into AddClimbSheet (new section) and ClimbDetailSheet (complete rewrite)
+- Updated AddClimbUseCase and UpdateClimbUseCase to persist tag impacts
+- In-memory caching for tag catalog improves performance
+- Atomic bulk updates for tag impacts maintain consistency
+- Tag impacts sync to Supabase technique_impacts and skill_impacts tables
 
 ### 2026-01-19: Premium Subscription System
 - Implemented PremiumService actor with StoreKit 2

@@ -389,45 +389,118 @@ struct FormView: View {
 
 ---
 
-### SCTagChip
+### TagImpactChip
 
-**Purpose**: Display tags with impact indicators.
+**Purpose**: Interactive three-state tag selection with impact indication.
 
-**File**: `SCTagChip.swift`
+**File**: `Features/Session/Components/TagImpactChip.swift`
 
 **API**:
+```swift
+struct TagImpactChip: View {
+    @Binding var selection: TagSelection
+}
+
+struct TagSelection: Equatable, Sendable {
+    let tagId: UUID
+    let tagName: String
+    var impact: TagImpact?
+}
+```
+
+**Features**:
+- Three-state cycle: unselected → helped → hindered → unselected
+- Inline thumbs up/down icons
+- Capsule shape with tinted background
+- Smooth animation (150ms ease-in-out)
+
+**States**:
+- **Unselected**: Gray background, no icon
+- **Helped**: Green tint, thumbs up icon on left
+- **Hindered**: Red tint, thumbs down icon on right
+
+**Usage**:
+```swift
+@State private var crimpSelection = TagSelection(
+    tagId: UUID(),
+    tagName: "Crimp",
+    impact: nil
+)
+
+TagImpactChip(selection: $crimpSelection)
+```
+
+**Interaction**:
+- Single tap cycles through states
+- Button style: `.plain` for custom appearance
+
+**Accessibility**:
+- ✅ VoiceOver announces tag name and state ("Crimp, helped")
+- ✅ Hint: "Double tap to change selection"
+- ✅ Dynamic Type support
+
+---
+
+### TagSelectionGrid
+
+**Purpose**: Flowing grid layout for tag chips organized by category.
+
+**File**: `Features/Session/Components/TagSelectionGrid.swift`
+
+**API**:
+```swift
+struct TagSelectionGrid: View {
+    let title: String
+    @Binding var selections: [TagSelection]
+}
+```
+
+**Features**:
+- Custom `FlowLayout` wraps chips to available width
+- Category title displayed above grid
+- Consistent spacing between chips
+- Adapts to screen size automatically
+
+**Usage**:
+```swift
+@State private var holdSelections: [TagSelection] = [
+    TagSelection(tagId: UUID(), tagName: "Crimp", impact: nil),
+    TagSelection(tagId: UUID(), tagName: "Sloper", impact: .helped),
+    // ...
+]
+
+TagSelectionGrid(
+    title: "Hold Types",
+    selections: $holdSelections
+)
+```
+
+**Layout Behavior**:
+- Left-to-right, top-to-bottom flow
+- Wraps when next chip would exceed width
+- Maintains visual balance
+- No horizontal scrolling
+
+**Accessibility**:
+- ✅ Section title read by VoiceOver
+- ✅ Each chip individually accessible
+- ✅ Maintains logical reading order
+
+---
+
+### SCTagChip (Deprecated)
+
+**Note**: This component has been replaced by `TagImpactChip` for interactive tag selection. `SCTagChip` was originally designed for display-only tags but the new pattern uses interactive three-state toggles throughout the app.
+
+**Previous API** (for reference):
 ```swift
 struct SCTagChip: View {
     let tag: String
     let impact: TagImpact?
 }
-
-enum TagImpact {
-    case helped, hindered, neutral
-}
 ```
 
-**Features**:
-- Compact pill shape
-- Color-coded impact indicators
-- Small corner radius (8pt)
-
-**Usage**:
-```swift
-HStack {
-    SCTagChip(tag: "Drop Knee", impact: .helped)
-    SCTagChip(tag: "Flexibility", impact: .hindered)
-    SCTagChip(tag: "Overhang", impact: nil)
-}
-```
-
-**Visual**:
-- Helped: Green foreground
-- Hindered: Red foreground
-- Neutral/nil: Gray foreground
-
-**Accessibility**:
-- ✅ Impact announced by VoiceOver ("Drop Knee, helped")
+**Migration**: Use `TagImpactChip` with `@Binding` for all tag displays, even in read-only contexts. The binding allows consistent interaction patterns.
 
 ---
 

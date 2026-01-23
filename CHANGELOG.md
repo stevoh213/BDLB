@@ -7,6 +7,74 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Tag System with Three-State Selection (2026-01-22)
+
+#### Tag System Features
+- **Predefined Tag Catalog** - 27 tags across two categories
+  - 11 Hold Types: Crimp, Sloper, Jug, Pinch, Pocket, Sidepull, Undercling, Gaston, Smear, Heel Hook, Toe Hook
+  - 16 Skills: Drop Knee, Flagging, Mantle, Dyno, Lock Off, Deadpoint, Body Tension, Finger Strength, Flexibility, Power, Endurance, No Cut Loose, Mental, Pacing, Precision, Route Reading
+- **Three-State Impact Rating** - Track how tags affected performance
+  - Unselected (gray) - Tag not relevant to climb
+  - Helped (green with thumbs up) - Positive impact, felt strong
+  - Hindered (red with thumbs down) - Negative impact, struggled
+- **TagService Actor** - Manages tag catalog and impact persistence
+  - In-memory caching for performance
+  - Bulk impact updates (atomic replace pattern)
+  - Soft delete support for sync
+  - First-launch seeding of predefined tags
+
+#### New UI Components
+- **TagImpactChip** - Three-state toggle chip with inline icons
+  - Tap cycles: unselected → helped → hindered → unselected
+  - Smooth animation (150ms ease-in-out)
+  - Capsule shape with tinted background
+  - VoiceOver support with state announcements
+- **TagSelectionGrid** - Flowing grid layout for tag chips
+  - Custom FlowLayout wraps chips to available width
+  - Category titles (Hold Types, Skills)
+  - Maintains visual balance across screen sizes
+
+#### Form Integration
+- **AddClimbSheet** - Tags section added (Section 4)
+  - Two subsections: Hold Types and Skills
+  - All 27 tags displayed in flowing grids
+  - Selection state persisted on save
+- **ClimbDetailSheet** - Complete rewrite to match AddClimbSheet
+  - Previously minimal edit form
+  - Now includes full tag selection UI
+  - Consistent section structure: Basic Info, Attempts, Performance, Tags, Notes
+  - Uses same TagSelectionGrid and TagImpactChip components
+
+#### Use Case Updates
+- **AddClimbUseCase** - Tag impact persistence
+  - Accepts `holdTypeImpacts` and `skillImpacts` arrays
+  - Calls `tagService.setHoldTypeImpacts()` and `setSkillImpacts()`
+  - Impacts marked with needsSync for background sync
+- **UpdateClimbUseCase** - Tag impact updates
+  - New `ClimbEditData` DTO includes tag impacts
+  - Atomic bulk replace of all impacts
+  - Soft deletes existing, creates new impacts
+
+#### Data Models
+- **SCTechniqueTag** - Hold type catalog model
+- **SCSkillTag** - Skill catalog model
+- **SCTechniqueImpact** - Hold type impact tracking
+- **SCSkillImpact** - Skill impact tracking
+- **TagImpact enum** - Codable impact rating (helped, hindered, neutral)
+- **TagSelection struct** - UI state for chip binding
+
+#### Database Integration
+- Impacts sync to Supabase `technique_impacts` and `skill_impacts` tables
+- Soft delete pattern maintains sync consistency
+- RLS policies restrict access to user's own impacts
+
+#### Technical Implementation
+- Actor-based TagService ensures thread-safety
+- Sendable DTOs (TechniqueTagDTO, SkillTagDTO, TagImpactInput)
+- In-memory caching prevents repeated SwiftData queries
+- Offline-first: Tags selected locally, synced in background
+- Atomic bulk updates prevent partial state
+
 ### Added - Premium Subscription System (2026-01-19)
 
 #### StoreKit 2 Integration

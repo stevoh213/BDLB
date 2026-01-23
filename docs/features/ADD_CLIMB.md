@@ -66,16 +66,22 @@ Each metric uses a three-state toggle:
 - **Neutral** (unselected) - Average or not notable
 - **Thumbs Down** (red) - Struggled or needs work
 
-#### 4. Characteristics (Coming Soon)
-Placeholder section for future features:
-- Wall Features (angle, texture)
-- Holds & Moves (crimps, slopers, dynos)
-- Skills Used (flexibility, endurance, power)
+#### 4. Tags
+Captures hold types and skills that were relevant to the climb:
+- **Hold Types** - Physical characteristics (Crimp, Sloper, Jug, Pinch, etc.)
+- **Skills** - Techniques and attributes used (Drop Knee, Flagging, Body Tension, etc.)
 
-These sections display "Coming Soon" labels and are non-interactive.
+Each tag uses a three-state toggle chip:
+- **Unselected** (gray) - Tag not relevant
+- **Helped** (green with thumbs up) - Positive impact, felt strong
+- **Hindered** (red with thumbs down) - Negative impact, struggled
+
+Tags are displayed in a flowing grid layout that wraps to available width.
 
 #### 5. Notes
 Free-form text field for personal observations, beta, conditions, or any other details.
+
+**Note**: Hold Types and Skills sections were previously marked "Coming Soon" but are now fully implemented with three-state tag selection.
 
 ---
 
@@ -88,12 +94,15 @@ AddClimbSheet (SwiftUI View)
     │
     ├─► GradePicker (reusable component)
     ├─► ThumbsToggle (custom performance rating)
+    ├─► TagSelectionGrid (flowing grid of tags)
+    │    └─► TagImpactChip (three-state toggle chip)
     └─► AddClimbData (data transfer object)
          │
          └─► AddClimbUseCase
               │
               ├─► ClimbService (creates climb entity)
-              └─► AttemptService (creates attempt records)
+              ├─► AttemptService (creates attempt records)
+              └─► TagService (persists tag impacts)
 ```
 
 ### Data Flow
@@ -125,6 +134,10 @@ The `AddClimbSheet` manages its own state using SwiftUI's `@State`:
 @State private var pacingRating: PerformanceRating? = nil
 @State private var precisionRating: PerformanceRating? = nil
 @State private var noCutLooseRating: PerformanceRating? = nil
+
+// Tags
+@State private var holdTypeSelections: [TagSelection] = []
+@State private var skillSelections: [TagSelection] = []
 
 // Notes
 @State private var notes: String = ""
@@ -237,7 +250,72 @@ enum PerformanceRating: String, Codable, Sendable {
 
 ---
 
-## ThumbsToggle Component
+## UI Components
+
+### TagImpactChip Component
+
+A three-state toggle chip for tag selection with impact indication.
+
+#### Interface
+
+```swift
+struct TagImpactChip: View {
+    @Binding var selection: TagSelection
+}
+
+struct TagSelection: Equatable, Sendable {
+    let tagId: UUID
+    let tagName: String
+    var impact: TagImpact?
+}
+```
+
+#### Behavior
+
+- **Tap to cycle** through states:
+  1. Unselected (gray, no icon)
+  2. Helped (green with thumbs up icon)
+  3. Hindered (red with thumbs down icon)
+  4. Back to unselected
+
+#### Visual Design
+
+- Capsule-shaped chip with horizontal padding
+- Icon appears inline with tag name
+- Background tint matches selection state
+- Smooth animation between states (150ms ease-in-out)
+
+#### Accessibility
+
+- VoiceOver announces tag name and current state
+- Hint: "Double tap to change selection"
+- Dynamic Type supported via `SCTypography.label`
+
+### TagSelectionGrid Component
+
+A flowing layout container for tag chips organized by category.
+
+#### Interface
+
+```swift
+struct TagSelectionGrid: View {
+    let title: String
+    @Binding var selections: [TagSelection]
+}
+```
+
+#### Layout
+
+Uses custom `FlowLayout` that arranges chips left-to-right, wrapping to new lines as needed. Adapts to available width automatically.
+
+#### Features
+
+- Section title displays above grid
+- Consistent spacing between chips (SCSpacing.xs)
+- Wraps naturally on narrow screens
+- Maintains visual balance
+
+### ThumbsToggle Component
 
 A custom three-state toggle for performance metrics.
 
@@ -303,6 +381,13 @@ struct AddClimbData {
     let pacingRating: PerformanceRating?
     let precisionRating: PerformanceRating?
     let noCutLooseRating: PerformanceRating?
+    let holdTypeImpacts: [TagImpactInput]
+    let skillImpacts: [TagImpactInput]
+}
+
+struct TagImpactInput: Sendable {
+    let tagId: UUID
+    let impact: TagImpact
 }
 ```
 
@@ -405,25 +490,108 @@ Performance rating colors (green/red) are paired with icons for color-blind acce
 
 ---
 
+## Tag System Implementation
+
+### Predefined Tag Catalog
+
+The tag system uses a predefined catalog seeded on first launch:
+
+#### Hold Types (11 tags)
+**Grip Types**:
+- Crimp, Sloper, Jug, Pinch, Pocket, Sidepull, Undercling
+
+**Movement Types**:
+- Gaston, Smear, Heel Hook, Toe Hook
+
+#### Skills (16 tags)
+**Technical**:
+- Drop Knee, Flagging, Mantle, Dyno, Lock Off, Deadpoint
+
+**Physical**:
+- Body Tension, Finger Strength, Flexibility, Power, Endurance, No Cut Loose
+
+**Mental**:
+- Mental, Pacing, Precision, Route Reading
+
+### Tag Service Architecture
+
+```swift
+actor TagService: TagServiceProtocol {
+    // Catalog queries (cached in memory)
+    func getHoldTypeTags() async -> [TechniqueTagDTO]
+    func getSkillTags() async -> [SkillTagDTO]
+
+    // Impact persistence (SwiftData)
+    func setHoldTypeImpacts(userId: UUID, climbId: UUID, impacts: [TagImpactInput]) async throws
+    func setSkillImpacts(userId: UUID, climbId: UUID, impacts: [TagImpactInput]) async throws
+
+    // First-launch seeding
+    func seedPredefinedTagsIfNeeded() async throws
+}
+```
+
+**Key Behaviors**:
+- Tags seeded once on first launch
+- Catalog cached in memory for performance
+- Impacts use soft delete pattern (deletedAt field)
+- Bulk impact updates replace existing impacts atomically
+- All changes marked with needsSync for background sync
+
+### Data Models
+
+```swift
+@Model final class SCTechniqueTag {
+    var id: UUID
+    var name: String
+    var category: String?
+}
+
+@Model final class SCSkillTag {
+    var id: UUID
+    var name: String
+    var category: String?
+}
+
+@Model final class SCTechniqueImpact {
+    var id: UUID
+    var userId: UUID
+    var climbId: UUID
+    var tagId: UUID
+    var impact: TagImpact
+    var needsSync: Bool
+    var createdAt: Date
+    var updatedAt: Date
+    var deletedAt: Date?
+}
+
+@Model final class SCSkillImpact {
+    // Same structure as SCTechniqueImpact
+}
+```
+
+### Sync Integration
+
+Tag impacts sync to Supabase alongside climbs:
+- Impacts created locally first (offline-first)
+- Marked with needsSync = true
+- SyncActor syncs to Supabase in background
+- Soft deletes allow conflict resolution
+
 ## Future Enhancements
 
-### Characteristics Section
+### Additional Tag Categories
 
-Planned features for route tagging:
+Potential future tag types:
 
 1. **Wall Features**
    - Angle (slab, vertical, overhang, roof)
    - Texture (smooth, textured, rough)
    - Height (short, medium, tall)
 
-2. **Holds & Moves**
-   - Hold types (crimps, slopers, jugs, pinches, pockets)
-   - Move types (dyno, mantle, compression, heel hook, toe hook)
-
-3. **Skills Used**
-   - Technical skills (flexibility, balance, core tension)
-   - Physical demands (power, endurance, finger strength)
-   - Mental aspects (problem-solving, fear management)
+2. **Environmental Conditions**
+   - Humidity (dry, damp, wet)
+   - Temperature (cold, comfortable, hot)
+   - Crowd level (empty, busy, packed)
 
 ### Performance Metrics Expansion
 
@@ -554,12 +722,58 @@ Auto-inference reduces cognitive load and taps required for 95% of cases.
 
 ---
 
+## Climb Editing Consistency
+
+### Unified Add/Edit Experience
+
+The Edit Climb sheet (`ClimbDetailSheet`) now matches the Add Climb form structure exactly:
+
+**Consistent Sections**:
+1. Basic Info (name, grade)
+2. Attempts & Outcome (read-only in edit mode)
+3. Performance (mental, pacing, precision, no cut loose)
+4. Tags (hold types, skills with three-state toggles)
+5. Notes
+
+**Key Changes**:
+- Edit form previously had minimal fields
+- Now includes full tag selection like Add Climb
+- Uses same `TagSelectionGrid` and `TagImpactChip` components
+- Performance ratings preserved from initial add
+- Consistent visual design and UX patterns
+
+**UpdateClimbUseCase Integration**:
+```swift
+final class UpdateClimbUseCase: UpdateClimbUseCaseProtocol {
+    func execute(userId: UUID, climbId: UUID, data: ClimbEditData) async throws {
+        // Update basic climb properties
+        try await climbService.updateClimb(climbId: climbId, updates: updates)
+
+        // Replace all tag impacts atomically
+        try await tagService.setHoldTypeImpacts(userId: userId, climbId: climbId, impacts: data.holdTypeImpacts)
+        try await tagService.setSkillImpacts(userId: userId, climbId: climbId, impacts: data.skillImpacts)
+    }
+}
+```
+
+**ClimbEditData DTO**:
+```swift
+struct ClimbEditData {
+    let name: String?
+    let gradeString: String
+    let gradeScale: GradeScale
+    let notes: String?
+    let holdTypeImpacts: [TagImpactInput]
+    let skillImpacts: [TagImpactInput]
+}
+```
+
 ## Known Limitations
 
 1. **No Attempt Editing:** Once created, attempts cannot be modified. Users must delete the climb and re-add it.
 2. **No Photo Attachment:** Currently no support for attaching images to climbs.
-3. **Characteristics Stub:** Wall features, holds, and skills are placeholders.
-4. **No Geo-Tagging:** Outdoor climb location must be selected separately (OpenBeta integration not yet in form).
+3. **No Geo-Tagging:** Outdoor climb location must be selected separately (OpenBeta integration not yet in form).
+4. **Tag Catalog Fixed:** Cannot add custom tags (predefined catalog only).
 
 ---
 

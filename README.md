@@ -8,9 +8,9 @@ A modern iOS climbing logbook application built with SwiftUI, SwiftData, and Swi
 - **Session Tracking**: Start/end climbing sessions with mental and physical readiness metrics
 - **Climb Logging**: Record climbs with grade, discipline, location, and notes
 - **Attempt Tracking**: Log individual attempts with outcomes, send types, and timestamps
+- **Tag System**: Track hold types (Crimp, Sloper, Jug, etc.) and skills (Drop Knee, Flagging, etc.) with three-state impact rating (helped/hindered/unselected) - 27 predefined tags
 - **Live Activity**: Real-time session stats on Lock Screen and Dynamic Island (iPhone 14 Pro+)
 - **Offline-First**: All data persists locally with SwiftData, syncs in background when online
-- **Tag System**: Categorize climbs by technique, skill, and wall style with impact indicators
 
 ### Integrations
 - **Supabase Backend**: Authentication, Row Level Security, 14 database tables
@@ -41,12 +41,15 @@ A modern iOS climbing logbook application built with SwiftUI, SwiftData, and Swi
 
 ### What's Implemented
 ✅ Complete project structure with Xcode workspace
-✅ 73 Swift files with actor-based concurrency
-✅ SwiftData models with 15 tables (including SCPremiumStatus)
+✅ 76 Swift files with actor-based concurrency
+✅ SwiftData models with 19 tables (including tag system)
 ✅ Supabase authentication (sign up, sign in, sign out, token refresh)
 ✅ Real-time username availability checking with debouncing (500ms)
 ✅ Username format validation (3-20 chars, alphanumeric + underscore, starts with letter)
 ✅ Design system with reusable components
+✅ Tag system with 27 predefined tags (11 hold types, 16 skills)
+✅ Three-state tag selection UI (TagImpactChip, TagSelectionGrid)
+✅ Consistent Add/Edit climb forms with full tag integration
 ✅ Tab-based navigation (Session, Logbook, Insights, Feed, Profile)
 ✅ Live Activity with Lock Screen and Dynamic Island support
 ✅ Deep linking from Live Activity buttons
