@@ -153,3 +153,108 @@ extension AttemptDTO {
         )
     }
 }
+
+// MARK: - TechniqueImpactDTO Conversions
+
+extension TechniqueImpactDTO {
+    /// Convert DTO to domain model
+    func toDomain() -> SCTechniqueImpact {
+        return SCTechniqueImpact(
+            id: id,
+            userId: userId,
+            climbId: climbId,
+            tagId: tagId,
+            impact: TagImpact(rawValue: impact) ?? .neutral,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            climb: nil,
+            tag: nil,
+            needsSync: false  // Coming from server, so synced
+        )
+    }
+
+    /// Create DTO from domain model
+    static func fromDomain(_ impact: SCTechniqueImpact) -> TechniqueImpactDTO {
+        return TechniqueImpactDTO(
+            id: impact.id,
+            userId: impact.userId,
+            climbId: impact.climbId,
+            tagId: impact.tagId,
+            impact: impact.impact.rawValue,
+            createdAt: impact.createdAt,
+            updatedAt: impact.updatedAt,
+            deletedAt: impact.deletedAt
+        )
+    }
+}
+
+// MARK: - SkillImpactDTO Conversions
+
+extension SkillImpactDTO {
+    /// Convert DTO to domain model
+    func toDomain() -> SCSkillImpact {
+        return SCSkillImpact(
+            id: id,
+            userId: userId,
+            climbId: climbId,
+            tagId: tagId,
+            impact: TagImpact(rawValue: impact) ?? .neutral,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            climb: nil,
+            tag: nil,
+            needsSync: false
+        )
+    }
+
+    /// Create DTO from domain model
+    static func fromDomain(_ impact: SCSkillImpact) -> SkillImpactDTO {
+        return SkillImpactDTO(
+            id: impact.id,
+            userId: impact.userId,
+            climbId: impact.climbId,
+            tagId: impact.tagId,
+            impact: impact.impact.rawValue,
+            createdAt: impact.createdAt,
+            updatedAt: impact.updatedAt,
+            deletedAt: impact.deletedAt
+        )
+    }
+}
+
+// MARK: - WallStyleImpactDTO Conversions
+
+extension WallStyleImpactDTO {
+    /// Convert DTO to domain model
+    func toDomain() -> SCWallStyleImpact {
+        return SCWallStyleImpact(
+            id: id,
+            userId: userId,
+            climbId: climbId,
+            tagId: tagId,
+            impact: TagImpact(rawValue: impact) ?? .neutral,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            climb: nil,
+            tag: nil,
+            needsSync: false
+        )
+    }
+
+    /// Create DTO from domain model
+    static func fromDomain(_ impact: SCWallStyleImpact) -> WallStyleImpactDTO {
+        return WallStyleImpactDTO(
+            id: impact.id,
+            userId: impact.userId,
+            climbId: impact.climbId,
+            tagId: impact.tagId,
+            impact: impact.impact.rawValue,
+            createdAt: impact.createdAt,
+            updatedAt: impact.updatedAt,
+            deletedAt: impact.deletedAt
+        )
+    }
+}

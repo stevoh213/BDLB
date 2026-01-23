@@ -69,6 +69,7 @@ actor SyncActor {
     private let sessionsTable: SessionsTable
     private let climbsTable: ClimbsTable
     private let attemptsTable: AttemptsTable
+    private let tagsTable: TagsTable
 
     init(
         modelContainer: ModelContainer,
@@ -79,6 +80,7 @@ actor SyncActor {
         self.sessionsTable = SessionsTable(repository: repository)
         self.climbsTable = ClimbsTable(repository: repository)
         self.attemptsTable = AttemptsTable(repository: repository)
+        self.tagsTable = TagsTable(repository: repository)
     }
 
     // MARK: - Public Interface
@@ -125,6 +127,18 @@ actor SyncActor {
             since: syncSince,
             userId: userId
         )
+        let techniqueImpactDTOs = try await tagsTable.fetchTechniqueImpactsUpdatedSince(
+            since: syncSince,
+            userId: userId
+        )
+        let skillImpactDTOs = try await tagsTable.fetchSkillImpactsUpdatedSince(
+            since: syncSince,
+            userId: userId
+        )
+        let wallStyleImpactDTOs = try await tagsTable.fetchWallStyleImpactsUpdatedSince(
+            since: syncSince,
+            userId: userId
+        )
 
         // Merge into SwiftData on background context
         let context = ModelContext(modelContainer)
@@ -143,6 +157,17 @@ actor SyncActor {
         // Merge attempts
         for dto in attemptDTOs {
             try mergeAttempt(dto: dto, context: context)
+        }
+
+        // Merge tag impacts
+        for dto in techniqueImpactDTOs {
+            try mergeTechniqueImpact(dto: dto, context: context)
+        }
+        for dto in skillImpactDTOs {
+            try mergeSkillImpact(dto: dto, context: context)
+        }
+        for dto in wallStyleImpactDTOs {
+            try mergeWallStyleImpact(dto: dto, context: context)
         }
 
         // Save merged changes
@@ -174,7 +199,26 @@ actor SyncActor {
         let attemptDescriptor = FetchDescriptor<SCAttempt>(predicate: attemptsPredicate)
         let attemptsToPush = try context.fetch(attemptDescriptor)
 
-        print("[SyncActor] Found \(sessionsToPush.count) sessions, \(climbsToPush.count) climbs, \(attemptsToPush.count) attempts to push")
+        // Fetch tag impacts with needsSync = true
+        let techniqueImpactsPredicate = #Predicate<SCTechniqueImpact> { impact in
+            impact.needsSync == true && impact.userId == userId
+        }
+        let techniqueImpactDescriptor = FetchDescriptor<SCTechniqueImpact>(predicate: techniqueImpactsPredicate)
+        let techniqueImpactsToPush = try context.fetch(techniqueImpactDescriptor)
+
+        let skillImpactsPredicate = #Predicate<SCSkillImpact> { impact in
+            impact.needsSync == true && impact.userId == userId
+        }
+        let skillImpactDescriptor = FetchDescriptor<SCSkillImpact>(predicate: skillImpactsPredicate)
+        let skillImpactsToPush = try context.fetch(skillImpactDescriptor)
+
+        let wallStyleImpactsPredicate = #Predicate<SCWallStyleImpact> { impact in
+            impact.needsSync == true && impact.userId == userId
+        }
+        let wallStyleImpactDescriptor = FetchDescriptor<SCWallStyleImpact>(predicate: wallStyleImpactsPredicate)
+        let wallStyleImpactsToPush = try context.fetch(wallStyleImpactDescriptor)
+
+        print("[SyncActor] Found \(sessionsToPush.count) sessions, \(climbsToPush.count) climbs, \(attemptsToPush.count) attempts, \(techniqueImpactsToPush.count) technique impacts, \(skillImpactsToPush.count) skill impacts, \(wallStyleImpactsToPush.count) wall style impacts to push")
 
         // Push sessions
         for session in sessionsToPush {
@@ -217,6 +261,51 @@ actor SyncActor {
                 print("[SyncActor] Successfully pushed attempt \(attempt.id)")
             } catch {
                 print("[SyncActor] Failed to push attempt \(attempt.id): \(error)")
+                throw error
+            }
+        }
+
+        // Push technique impacts
+        for impact in techniqueImpactsToPush {
+            do {
+                let dto = TechniqueImpactDTO.fromDomain(impact)
+                print("[SyncActor] Pushing technique impact \(impact.id)")
+                _ = try await tagsTable.upsertTechniqueImpact(dto)
+                impact.needsSync = false
+                impact.updatedAt = Date()
+                print("[SyncActor] Successfully pushed technique impact \(impact.id)")
+            } catch {
+                print("[SyncActor] Failed to push technique impact \(impact.id): \(error)")
+                throw error
+            }
+        }
+
+        // Push skill impacts
+        for impact in skillImpactsToPush {
+            do {
+                let dto = SkillImpactDTO.fromDomain(impact)
+                print("[SyncActor] Pushing skill impact \(impact.id)")
+                _ = try await tagsTable.upsertSkillImpact(dto)
+                impact.needsSync = false
+                impact.updatedAt = Date()
+                print("[SyncActor] Successfully pushed skill impact \(impact.id)")
+            } catch {
+                print("[SyncActor] Failed to push skill impact \(impact.id): \(error)")
+                throw error
+            }
+        }
+
+        // Push wall style impacts
+        for impact in wallStyleImpactsToPush {
+            do {
+                let dto = WallStyleImpactDTO.fromDomain(impact)
+                print("[SyncActor] Pushing wall style impact \(impact.id)")
+                _ = try await tagsTable.upsertWallStyleImpact(dto)
+                impact.needsSync = false
+                impact.updatedAt = Date()
+                print("[SyncActor] Successfully pushed wall style impact \(impact.id)")
+            } catch {
+                print("[SyncActor] Failed to push wall style impact \(impact.id): \(error)")
                 throw error
             }
         }
@@ -340,6 +429,81 @@ actor SyncActor {
         } else {
             let newAttempt = dto.toDomain()
             context.insert(newAttempt)
+        }
+    }
+
+    /// Merge remote technique impact into local database
+    private func mergeTechniqueImpact(dto: TechniqueImpactDTO, context: ModelContext) throws {
+        let predicate = #Predicate<SCTechniqueImpact> { impact in
+            impact.id == dto.id
+        }
+        let descriptor = FetchDescriptor<SCTechniqueImpact>(predicate: predicate)
+        let existing = try context.fetch(descriptor).first
+
+        if let existing = existing {
+            // Conflict resolution: skip if local has pending changes
+            guard !existing.needsSync else { return }
+
+            // Remote is newer, update local
+            if dto.updatedAt > existing.updatedAt {
+                existing.climbId = dto.climbId
+                existing.tagId = dto.tagId
+                existing.impact = TagImpact(rawValue: dto.impact) ?? existing.impact
+                existing.updatedAt = dto.updatedAt
+                existing.deletedAt = dto.deletedAt
+            }
+        } else {
+            // New record from remote, insert
+            let newImpact = dto.toDomain()
+            context.insert(newImpact)
+        }
+    }
+
+    /// Merge remote skill impact into local database
+    private func mergeSkillImpact(dto: SkillImpactDTO, context: ModelContext) throws {
+        let predicate = #Predicate<SCSkillImpact> { impact in
+            impact.id == dto.id
+        }
+        let descriptor = FetchDescriptor<SCSkillImpact>(predicate: predicate)
+        let existing = try context.fetch(descriptor).first
+
+        if let existing = existing {
+            guard !existing.needsSync else { return }
+
+            if dto.updatedAt > existing.updatedAt {
+                existing.climbId = dto.climbId
+                existing.tagId = dto.tagId
+                existing.impact = TagImpact(rawValue: dto.impact) ?? existing.impact
+                existing.updatedAt = dto.updatedAt
+                existing.deletedAt = dto.deletedAt
+            }
+        } else {
+            let newImpact = dto.toDomain()
+            context.insert(newImpact)
+        }
+    }
+
+    /// Merge remote wall style impact into local database
+    private func mergeWallStyleImpact(dto: WallStyleImpactDTO, context: ModelContext) throws {
+        let predicate = #Predicate<SCWallStyleImpact> { impact in
+            impact.id == dto.id
+        }
+        let descriptor = FetchDescriptor<SCWallStyleImpact>(predicate: predicate)
+        let existing = try context.fetch(descriptor).first
+
+        if let existing = existing {
+            guard !existing.needsSync else { return }
+
+            if dto.updatedAt > existing.updatedAt {
+                existing.climbId = dto.climbId
+                existing.tagId = dto.tagId
+                existing.impact = TagImpact(rawValue: dto.impact) ?? existing.impact
+                existing.updatedAt = dto.updatedAt
+                existing.deletedAt = dto.deletedAt
+            }
+        } else {
+            let newImpact = dto.toDomain()
+            context.insert(newImpact)
         }
     }
 }

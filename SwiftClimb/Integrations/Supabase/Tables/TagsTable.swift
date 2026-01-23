@@ -1,6 +1,6 @@
 import Foundation
 
-/// Tag tables operations
+/// Tag tables operations for sync
 actor TagsTable {
     private let repository: SupabaseRepository
 
@@ -8,65 +8,114 @@ actor TagsTable {
         self.repository = repository
     }
 
-    // MARK: - Tag Definitions
+    // MARK: - Technique Impacts
 
-    func fetchTechniqueTags() async throws -> [TagDTO] {
-        // TODO: Fetch all technique tags
-        return []
+    /// Upsert (insert or update) a technique impact record
+    func upsertTechniqueImpact(_ dto: TechniqueImpactDTO) async throws -> TechniqueImpactDTO {
+        return try await repository.upsert(
+            into: "technique_impacts",
+            values: dto,
+            onConflict: "id"
+        )
     }
 
-    func fetchSkillTags() async throws -> [TagDTO] {
-        // TODO: Fetch all skill tags
-        return []
+    /// Fetch technique impacts updated since a given date for incremental sync
+    func fetchTechniqueImpactsUpdatedSince(since: Date, userId: UUID) async throws -> [TechniqueImpactDTO] {
+        return try await repository.selectUpdatedSince(
+            from: "technique_impacts",
+            since: since,
+            userId: userId
+        )
     }
 
-    func fetchWallStyleTags() async throws -> [TagDTO] {
-        // TODO: Fetch all wall style tags
-        return []
+    // MARK: - Skill Impacts
+
+    /// Upsert (insert or update) a skill impact record
+    func upsertSkillImpact(_ dto: SkillImpactDTO) async throws -> SkillImpactDTO {
+        return try await repository.upsert(
+            into: "skill_impacts",
+            values: dto,
+            onConflict: "id"
+        )
     }
 
-    // MARK: - Tag Impacts
-
-    func upsertTechniqueImpact(_ dto: TagImpactDTO) async throws -> TagImpactDTO {
-        // TODO: Insert or update technique impact
-        fatalError("Not implemented")
+    /// Fetch skill impacts updated since a given date for incremental sync
+    func fetchSkillImpactsUpdatedSince(since: Date, userId: UUID) async throws -> [SkillImpactDTO] {
+        return try await repository.selectUpdatedSince(
+            from: "skill_impacts",
+            since: since,
+            userId: userId
+        )
     }
 
-    func upsertSkillImpact(_ dto: TagImpactDTO) async throws -> TagImpactDTO {
-        // TODO: Insert or update skill impact
-        fatalError("Not implemented")
+    // MARK: - Wall Style Impacts
+
+    /// Upsert (insert or update) a wall style impact record
+    func upsertWallStyleImpact(_ dto: WallStyleImpactDTO) async throws -> WallStyleImpactDTO {
+        return try await repository.upsert(
+            into: "wall_style_impacts",
+            values: dto,
+            onConflict: "id"
+        )
     }
 
-    func upsertWallStyleImpact(_ dto: TagImpactDTO) async throws -> TagImpactDTO {
-        // TODO: Insert or update wall style impact
-        fatalError("Not implemented")
-    }
-
-    func fetchImpactsUpdatedSince(since: Date, userId: UUID) async throws -> [TagImpactDTO] {
-        // TODO: Fetch impacts updated since date
-        return []
+    /// Fetch wall style impacts updated since a given date for incremental sync
+    func fetchWallStyleImpactsUpdatedSince(since: Date, userId: UUID) async throws -> [WallStyleImpactDTO] {
+        return try await repository.selectUpdatedSince(
+            from: "wall_style_impacts",
+            since: since,
+            userId: userId
+        )
     }
 }
 
 // MARK: - Data Transfer Objects
 
-struct TagDTO: Codable, Sendable {
+struct TechniqueImpactDTO: Codable, Sendable {
     let id: UUID
-    let name: String
-    let category: String?
+    let userId: UUID
+    let climbId: UUID
+    let tagId: UUID
+    let impact: String
     let createdAt: Date
     let updatedAt: Date
+    let deletedAt: Date?
 
     enum CodingKeys: String, CodingKey {
         case id
-        case name
-        case category
+        case userId = "user_id"
+        case climbId = "climb_id"
+        case tagId = "tag_id"
+        case impact
         case createdAt = "created_at"
         case updatedAt = "updated_at"
+        case deletedAt = "deleted_at"
     }
 }
 
-struct TagImpactDTO: Codable, Sendable {
+struct SkillImpactDTO: Codable, Sendable {
+    let id: UUID
+    let userId: UUID
+    let climbId: UUID
+    let tagId: UUID
+    let impact: String
+    let createdAt: Date
+    let updatedAt: Date
+    let deletedAt: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId = "user_id"
+        case climbId = "climb_id"
+        case tagId = "tag_id"
+        case impact
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+        case deletedAt = "deleted_at"
+    }
+}
+
+struct WallStyleImpactDTO: Codable, Sendable {
     let id: UUID
     let userId: UUID
     let climbId: UUID
