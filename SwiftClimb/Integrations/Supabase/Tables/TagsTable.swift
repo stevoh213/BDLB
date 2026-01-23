@@ -8,6 +8,24 @@ actor TagsTable {
         self.repository = repository
     }
 
+    // MARK: - Tag Catalog (Reference Data)
+
+    /// Fetch all technique tags from Supabase
+    func fetchAllTechniqueTags() async throws -> [TechniqueTagRemoteDTO] {
+        return try await repository.select(
+            from: "technique_tags",
+            orderBy: "name.asc"
+        )
+    }
+
+    /// Fetch all skill tags from Supabase
+    func fetchAllSkillTags() async throws -> [SkillTagRemoteDTO] {
+        return try await repository.select(
+            from: "skill_tags",
+            orderBy: "name.asc"
+        )
+    }
+
     // MARK: - Technique Impacts
 
     /// Upsert (insert or update) a technique impact record
@@ -134,5 +152,41 @@ struct WallStyleImpactDTO: Codable, Sendable {
         case createdAt = "created_at"
         case updatedAt = "updated_at"
         case deletedAt = "deleted_at"
+    }
+}
+
+// MARK: - Tag Catalog DTOs (Reference Data)
+
+/// Remote DTO for technique tags (hold types, movement techniques)
+struct TechniqueTagRemoteDTO: Codable, Sendable {
+    let id: UUID
+    let name: String
+    let category: String?
+    let createdAt: Date
+    let updatedAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case category
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+    }
+}
+
+/// Remote DTO for skill tags (physical, mental, grip skills)
+struct SkillTagRemoteDTO: Codable, Sendable {
+    let id: UUID
+    let name: String
+    let category: String?
+    let createdAt: Date
+    let updatedAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case category
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
     }
 }

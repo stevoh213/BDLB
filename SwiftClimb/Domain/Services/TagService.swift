@@ -50,8 +50,8 @@ protocol TagServiceProtocol: Sendable {
         impacts: [TagImpactInput]
     ) async throws
 
-    // Seed predefined tags (called on first launch)
-    func seedPredefinedTagsIfNeeded() async throws
+    // Sync tags from Supabase (called on login/startup)
+    func syncTagsFromRemote() async throws
 }
 
 // MARK: - Implementation
@@ -59,16 +59,18 @@ protocol TagServiceProtocol: Sendable {
 /// Actor-based tag service with offline-first persistence.
 ///
 /// This service manages the predefined tag catalog and impact tracking for climbs.
-/// Tags are seeded once on first launch and cached in memory for performance.
+/// Tags are synced from Supabase on login and cached in memory for performance.
 actor TagService: TagServiceProtocol {
     private let modelContainer: ModelContainer
+    private let tagsTable: TagsTable?
 
-    // In-memory cache for tag catalog (seeded once, never changes)
+    // In-memory cache for tag catalog (synced from remote, cached locally)
     private var holdTypeTagsCache: [TechniqueTagDTO]?
     private var skillTagsCache: [SkillTagDTO]?
 
-    init(modelContainer: ModelContainer) {
+    init(modelContainer: ModelContainer, tagsTable: TagsTable? = nil) {
         self.modelContainer = modelContainer
+        self.tagsTable = tagsTable
     }
 
     @MainActor
@@ -196,85 +198,85 @@ actor TagService: TagServiceProtocol {
         }
     }
 
-    // MARK: - Tag Seeding
+    // MARK: - Tag Sync from Remote
 
-    func seedPredefinedTagsIfNeeded() async throws {
+    /// Syncs tag catalog from Supabase to local SwiftData.
+    ///
+    /// This method fetches all technique and skill tags from Supabase
+    /// and upserts them into local SwiftData with matching UUIDs.
+    /// This ensures that when impacts are created locally, they use
+    /// the same tag UUIDs as Supabase for proper sync.
+    func syncTagsFromRemote() async throws {
+        guard let tagsTable = tagsTable else {
+            print("[TagService] No tagsTable available, skipping remote sync")
+            return
+        }
+
+        print("[TagService] Syncing tags from Supabase...")
+
+        // Fetch tags from Supabase
+        let remoteTechniqueTags = try await tagsTable.fetchAllTechniqueTags()
+        let remoteSkillTags = try await tagsTable.fetchAllSkillTags()
+
+        print("[TagService] Fetched \(remoteTechniqueTags.count) technique tags, \(remoteSkillTags.count) skill tags")
+
+        // Upsert into local SwiftData
         try await MainActor.run {
-            // Check if already seeded
-            let holdDescriptor = FetchDescriptor<SCTechniqueTag>()
-            let existingHolds = try modelContext.fetch(holdDescriptor)
+            // Upsert technique tags
+            for remoteTag in remoteTechniqueTags {
+                let predicate = #Predicate<SCTechniqueTag> { $0.id == remoteTag.id }
+                let descriptor = FetchDescriptor<SCTechniqueTag>(predicate: predicate)
+                let existing = try modelContext.fetch(descriptor).first
 
-            if existingHolds.isEmpty {
-                try seedHoldTypeTags()
+                if let existing = existing {
+                    // Update existing tag
+                    existing.name = remoteTag.name
+                    existing.category = remoteTag.category
+                    existing.updatedAt = remoteTag.updatedAt
+                } else {
+                    // Insert new tag with Supabase UUID
+                    let tag = SCTechniqueTag(
+                        id: remoteTag.id,
+                        name: remoteTag.name,
+                        category: remoteTag.category,
+                        createdAt: remoteTag.createdAt,
+                        updatedAt: remoteTag.updatedAt
+                    )
+                    modelContext.insert(tag)
+                }
             }
 
-            let skillDescriptor = FetchDescriptor<SCSkillTag>()
-            let existingSkills = try modelContext.fetch(skillDescriptor)
+            // Upsert skill tags
+            for remoteTag in remoteSkillTags {
+                let predicate = #Predicate<SCSkillTag> { $0.id == remoteTag.id }
+                let descriptor = FetchDescriptor<SCSkillTag>(predicate: predicate)
+                let existing = try modelContext.fetch(descriptor).first
 
-            if existingSkills.isEmpty {
-                try seedSkillTags()
+                if let existing = existing {
+                    // Update existing tag
+                    existing.name = remoteTag.name
+                    existing.category = remoteTag.category
+                    existing.updatedAt = remoteTag.updatedAt
+                } else {
+                    // Insert new tag with Supabase UUID
+                    let tag = SCSkillTag(
+                        id: remoteTag.id,
+                        name: remoteTag.name,
+                        category: remoteTag.category,
+                        createdAt: remoteTag.createdAt,
+                        updatedAt: remoteTag.updatedAt
+                    )
+                    modelContext.insert(tag)
+                }
             }
 
             try modelContext.save()
         }
 
-        // Clear cache to force reload (done outside MainActor.run to avoid actor isolation issues)
+        // Clear cache to force reload with new data
         holdTypeTagsCache = nil
         skillTagsCache = nil
-    }
 
-    @MainActor
-    private func seedHoldTypeTags() throws {
-        let holdTypes: [(name: String, category: String)] = [
-            ("Crimp", "Grip"),
-            ("Sloper", "Grip"),
-            ("Jug", "Grip"),
-            ("Pinch", "Grip"),
-            ("Pocket", "Grip"),
-            ("Sidepull", "Grip"),
-            ("Undercling", "Grip"),
-            ("Gaston", "Movement"),
-            ("Smear", "Movement"),
-            ("Heel Hook", "Movement"),
-            ("Toe Hook", "Movement")
-        ]
-
-        for holdType in holdTypes {
-            let tag = SCTechniqueTag(
-                name: holdType.name,
-                category: holdType.category
-            )
-            modelContext.insert(tag)
-        }
-    }
-
-    @MainActor
-    private func seedSkillTags() throws {
-        let skills: [(name: String, category: String)] = [
-            ("Drop Knee", "Technical"),
-            ("Flagging", "Technical"),
-            ("Mantle", "Technical"),
-            ("Dyno", "Technical"),
-            ("Lock Off", "Technical"),
-            ("Deadpoint", "Technical"),
-            ("Body Tension", "Physical"),
-            ("Finger Strength", "Physical"),
-            ("Flexibility", "Physical"),
-            ("Power", "Physical"),
-            ("Endurance", "Physical"),
-            ("No Cut Loose", "Physical"),
-            ("Mental", "Mental"),
-            ("Pacing", "Mental"),
-            ("Precision", "Mental"),
-            ("Route Reading", "Mental")
-        ]
-
-        for skill in skills {
-            let tag = SCSkillTag(
-                name: skill.name,
-                category: skill.category
-            )
-            modelContext.insert(tag)
-        }
+        print("[TagService] Tag sync complete")
     }
 }

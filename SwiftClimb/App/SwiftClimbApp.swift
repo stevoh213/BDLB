@@ -83,7 +83,8 @@ struct SwiftClimbApp: App {
         let sessionService = SessionService(modelContainer: modelContainer)
         let climbService = ClimbService(modelContainer: modelContainer)
         let attemptService = AttemptService(modelContainer: modelContainer)
-        let tagService = TagService(modelContainer: modelContainer)
+        let tagsTable = TagsTable(repository: repository)
+        let tagService = TagService(modelContainer: modelContainer, tagsTable: tagsTable)
         self.tagService = tagService
         let socialService = SocialServiceImpl(
             modelContainer: modelContainer,
@@ -214,13 +215,12 @@ struct SwiftClimbApp: App {
                 pendingDeepLink = DeepLink(url: url)
             }
             .task {
-                // Seed predefined tags (runs once on first launch)
-                try? await tagService.seedPredefinedTagsIfNeeded()
-
                 await authManager.loadSession()
                 // Sync profile to SwiftData after session restore
                 if authManager.isAuthenticated {
                     await syncCurrentUserProfile()
+                    // Sync tags from Supabase (needed before impacts can sync)
+                    try? await tagService.syncTagsFromRemote()
                     // Initialize sync actor and perform initial sync
                     initializeSyncActor()
                     await performInitialSync()
@@ -235,7 +235,10 @@ struct SwiftClimbApp: App {
                 updatePremiumService(isAuthenticated: isAuthenticated)
 
                 if isAuthenticated {
-                    // User signed in - initialize sync
+                    // User signed in - sync tags first, then initialize data sync
+                    Task {
+                        try? await tagService.syncTagsFromRemote()
+                    }
                     initializeSyncActor()
                     Task {
                         await performInitialSync()
@@ -263,6 +266,8 @@ struct SwiftClimbApp: App {
                 if enabled {
                     Task {
                         await createDevProfile()
+                        // Sync tags from remote for dev mode too
+                        try? await tagService.syncTagsFromRemote()
                     }
                     updatePremiumService(isAuthenticated: true)
                     initializeSyncActor()
